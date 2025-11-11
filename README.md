@@ -6,7 +6,7 @@ El proyecto forma parte del bloque de Sistemas Multiagentes y se centra en el di
 
 ---
 
-## 🧩 Descripción general del reto
+## Descripción general del reto
 
 En la operación tradicional de invernaderos, la detección de posibles infecciones se realiza de forma manual y reactiva:
 
@@ -28,7 +28,7 @@ Este proyecto propone un **entorno simulado** donde un conjunto de agentes autó
 
 ---
 
-## 🏗 Enfoque general de la solución
+## Enfoque general de la solución
 
 Se modela un invernadero como un **grafo de segmentos** (nodos = segmentos de filas con plantas asociadas; aristas = pasillos).  
 Sobre este entorno trabajan los siguientes agentes:
@@ -49,7 +49,7 @@ Toda la inteligencia de diagnóstico y planificación global se concentra en el 
 
 ---
 
-## 🧠 Arquitectura de agentes (resumen)
+## Arquitectura de agentes (resumen)
 
 ### Patólogo Digital (Híbrido)
 - **Capa Reactiva:** Maneja eventos inmediatos (misiones completadas, muestras entregadas, estados de segmentos).
