@@ -11,6 +11,9 @@ public class GridManager : MonoBehaviour
     // Mapa lógico: de coordenadas de grilla -> TileInfo
     private Dictionary<Vector2Int, TileInfo> tiles;
 
+    // Obstáculos dinámicos (humanos, filas bloqueadas temporalmente, etc.)
+    private HashSet<Vector2Int> dynamicBlocked = new HashSet<Vector2Int>();
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -38,7 +41,6 @@ public class GridManager : MonoBehaviour
             int gz = Mathf.FloorToInt(pos.z / cellSize + 0.5f);
             Vector2Int gridPos = new Vector2Int(gx, gz);
 
-
             tile.gridPos = gridPos;
 
             if (!tiles.ContainsKey(gridPos))
@@ -55,7 +57,10 @@ public class GridManager : MonoBehaviour
         Debug.Log($"Grid construido con {tiles.Count} tiles.");
     }
 
-    public bool IsWalkable(Vector2Int gridPos)
+    // ---- helpers de walkability ----
+
+    // Solo revisa el tile estático (piso vs cama vs fuera)
+    private bool IsWalkableStatic(Vector2Int gridPos)
     {
         if (tiles.TryGetValue(gridPos, out TileInfo tile))
         {
@@ -63,6 +68,28 @@ public class GridManager : MonoBehaviour
         }
         return false;
     }
+
+    // Versión simple: solo estáticos + bloqueos dinámicos (NO bots)
+    public bool IsWalkable(Vector2Int gridPos)
+    {
+        if (!IsWalkableStatic(gridPos)) return false;
+        if (dynamicBlocked.Contains(gridPos)) return false;
+        return true;
+    }
+
+    // Bloqueos dinámicos (para humanos / filas cerradas)
+    public void SetDynamicBlocked(Vector2Int gridPos, bool blocked)
+    {
+        if (blocked) dynamicBlocked.Add(gridPos);
+        else dynamicBlocked.Remove(gridPos);
+    }
+
+    public bool IsDynamicallyBlocked(Vector2Int gridPos)
+    {
+        return dynamicBlocked.Contains(gridPos);
+    }
+
+    // ---- conversión mundo <-> grilla ----
 
     public Vector3 GridToWorld(Vector2Int gridPos)
     {
@@ -72,7 +99,6 @@ public class GridManager : MonoBehaviour
         return new Vector3(x, 0f, z);
     }
 
-
     public Vector2Int WorldToGrid(Vector3 worldPos)
     {
         int gx = Mathf.FloorToInt(worldPos.x / cellSize + 0.5f);
@@ -80,9 +106,11 @@ public class GridManager : MonoBehaviour
         return new Vector2Int(gx, gz);
     }
 
-
-    // Pathfinding muy simple (BFS) en 4 direcciones
-    public List<Vector2Int> FindPath(Vector2Int start, Vector2Int goal)
+    // ---- Pathfinding BFS en 4 direcciones, considerando:
+    // - tiles estáticos
+    // - bloqueos dinámicos
+    // - otros bots como obstáculos (excepto en la casilla goal) ----
+    public List<Vector2Int> FindPath(Vector2Int start, Vector2Int goal, BotController requester = null)
     {
         Queue<Vector2Int> frontier = new Queue<Vector2Int>();
         frontier.Enqueue(start);
@@ -109,9 +137,25 @@ public class GridManager : MonoBehaviour
             {
                 Vector2Int next = current + dir;
 
-                if (!tiles.ContainsKey(next)) continue;           // fuera del grid
-                if (!IsWalkable(next)) continue;                  // cama de cultivo
-                if (cameFrom.ContainsKey(next)) continue;         // ya visitado
+                // fuera del grid
+                if (!tiles.ContainsKey(next)) continue;
+
+                // camas / paredes
+                if (!IsWalkableStatic(next)) continue;
+
+                // bloqueos dinámicos (humanos, filas cerradas)
+                if (dynamicBlocked.Contains(next)) continue;
+
+                // otros bots como obstáculos dinámicos
+                if (requester != null && BotManager.Instance != null)
+                {
+                    BotController other = BotManager.Instance.GetBotAt(next);
+                    // si hay otro bot en esa celda y NO es la meta, evitamos pasar por ahí
+                    if (other != null && other != requester && next != goal)
+                        continue;
+                }
+
+                if (cameFrom.ContainsKey(next)) continue; // ya visitado
 
                 frontier.Enqueue(next);
                 cameFrom[next] = current;
