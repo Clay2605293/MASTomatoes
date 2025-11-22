@@ -84,6 +84,15 @@ public class GridManager : MonoBehaviour
         else dynamicBlocked.Remove(gridPos);
     }
 
+    public void SetTileWalkable(Vector2Int gridPos, bool walkable)
+    {
+        if (tiles.TryGetValue(gridPos, out TileInfo tile))
+        {
+            tile.walkable = walkable;
+        }
+    }
+
+
     public bool IsDynamicallyBlocked(Vector2Int gridPos)
     {
         return dynamicBlocked.Contains(gridPos);
