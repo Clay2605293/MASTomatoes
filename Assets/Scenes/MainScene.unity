@@ -94,7 +94,7 @@ LightmapSettings:
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
   m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
-  m_LightingSettings: {fileID: 0}
+  m_LightingSettings: {fileID: 4890085278179872738, guid: ea611283092551042a5f43310b7a6202, type: 2}
 --- !u!196 &4
 NavMeshSettings:
   serializedVersion: 2
@@ -4264,7 +4264,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: capacity
-      value: 30
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
@@ -11296,7 +11296,7 @@ Transform:
   m_GameObject: {fileID: 151744914}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -5.5, y: -0.1, z: -9.5}
+  m_LocalPosition: {x: -5.5, y: 0, z: -9.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -48379,7 +48379,7 @@ Transform:
   m_GameObject: {fileID: 657595440}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9.5, y: -0.1, z: -9.5}
+  m_LocalPosition: {x: 9.5, y: 0, z: -9.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -55735,7 +55735,7 @@ Transform:
   m_GameObject: {fileID: 754402849}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -10.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: -10.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -56774,7 +56774,7 @@ Transform:
   m_GameObject: {fileID: 768366625}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -11.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: -11.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -62586,7 +62586,7 @@ Transform:
   m_GameObject: {fileID: 832184962}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 8.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: 8.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -63854,8 +63854,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ad7157460bdb3fb4a9c0a8521c2dfa2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TomatoFieldManager
+  allTasks: []
   tomatoPrefab: {fileID: 6039818433915513305, guid: f835774b4e9c6c14da4a2bbd7d2210fc, type: 3}
   tomatoHeightStep: 0.2
+  tomatoRadiusOffset: 0.15
 --- !u!4 &850762154
 Transform:
   m_ObjectHideFlags: 0
@@ -68203,7 +68205,7 @@ Transform:
   m_GameObject: {fileID: 909566360}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: 6.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -74903,7 +74905,7 @@ Transform:
   m_GameObject: {fileID: 986007308}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -8.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: -8.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -80625,7 +80627,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: capacity
-      value: 30
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
@@ -84433,7 +84435,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: capacity
-      value: 30
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
@@ -88475,7 +88477,7 @@ Transform:
   m_GameObject: {fileID: 1148917302}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: 5.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -110438,7 +110440,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: capacity
-      value: 30
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
@@ -116975,7 +116977,7 @@ Transform:
   m_GameObject: {fileID: 1512829177}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -9.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: -9.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -135101,7 +135103,7 @@ Transform:
   m_GameObject: {fileID: 1724172254}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: 4.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -151262,7 +151264,7 @@ Transform:
   m_GameObject: {fileID: 1906368863}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 7.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: 7.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -153620,13 +153622,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a6fcf8d909ac864faae8a5ad430c671, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BotManager
-  dockingQueueWorldSlots:
+  dockingQueueSlots:
   - {fileID: 1971789094}
   - {fileID: 986007309}
   - {fileID: 1512829178}
   - {fileID: 754402850}
   - {fileID: 768366626}
-  ecQueueWorldSlots:
+  ecQueueSlots:
   - {fileID: 832184963}
   - {fileID: 1906368864}
   - {fileID: 909566361}
@@ -157443,7 +157445,7 @@ Transform:
   m_GameObject: {fileID: 1971789093}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -7.5, y: -0, z: -10.5}
+  m_LocalPosition: {x: -7.5, y: 0, z: -10.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -170141,7 +170143,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: capacity
-      value: 30
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
