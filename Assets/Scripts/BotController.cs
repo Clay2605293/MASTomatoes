@@ -1,8 +1,30 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class BotController : MonoBehaviour
 {
+    // ---------------- ESTADOS ----------------
+
+    public enum BotState
+    {
+        GoingToDS_Initial,
+        WaitingAtDS_Initial,
+        Harvesting,
+        GoingToEC,
+        WaitingForEC,
+        Unloading,
+        GoingToDS_Final,
+        WaitingAtDS_Final,
+        ReturningHome,
+        IdleFinished
+    }
+
+    [Header("Estado (solo lectura)")]
+    public BotState state = BotState.GoingToDS_Initial;
+
+    // ---------------- CONFIG GENERAL ----------------
+
     public float moveSpeed = 3f; // no se usa aún, lo dejamos por si luego cambiamos el modelo
 
     [Header("Velocidad en tiles")]
@@ -10,19 +32,30 @@ public class BotController : MonoBehaviour
 
     [Header("Debug / Órdenes")]
     public Transform debugTarget;          // destino único de prueba (opcional)
-    public List<Transform> taskTargets;    // lista de destinos (tomates, zonas, etc.)
+    public List<Transform> taskTargets;    // lista de destinos (modo debug)
 
     [Header("Config")]
     public bool useInspectorTasks = false; // si true, usa taskTargets/debugTarget
 
+    [Header("Stations")]
+    public Transform dockingStationTransform; // DS
+    public Transform ecTransform;             // EC
+
+    [Header("Tomates")]
+    public int capacity = 5;
+    public float perTomatoPickupTime = 0.1f;
+    public float perTomatoDropTime = 0.1f;
+    public float dockWaitSeconds = 2f;
+
+    // ---------------- CAMPOS PRIVADOS ----------------
+
     private GridManager grid;
     private BotManager botManager;
 
-    private List<Vector2Int> currentPath = new List<Vector2Int>();
+    private List<Vector2Int> currentPath = new();
     private int currentPathIndex = 0;
 
-    // Cola solo para modo debug (useInspectorTasks)
-    private Queue<Vector2Int> taskQueue = new Queue<Vector2Int>();
+    private Queue<Vector2Int> taskQueue = new(); // solo modo debug
 
     // posición actual en coordenadas de grilla
     public Vector2Int CurrentGridPos { get; private set; }
@@ -37,23 +70,24 @@ public class BotController : MonoBehaviour
     // Animación entre tiles
     private Vector3 worldFrom;
     private Vector3 worldTo;
-    // 1 = llegó al destino del paso; 0 = inicio del paso
-    private float stepProgress = 1f;
+    private float stepProgress = 1f; // 1 = llegó al destino
+
+    // Posiciones clave
+    private Vector2Int dsGridPos;
+    private Vector2Int ecGridPos;
+    private Vector2Int homeGridPos;
 
     // --- Sistema de tareas "reales" (TomatoTask) ---
 
-    // Lista completa de tareas que el TaskDistributor le asignó a este bot
     private List<TomatoFieldManager.TomatoTask> assignedTasks;
-
-    // Subconjuntos de trabajo
     private List<TomatoFieldManager.TomatoTask> pendingTasks = new();
     private List<TomatoFieldManager.TomatoTask> blockedTasks = new();
-
-    // Tarea actual que está intentando ejecutar
     private TomatoFieldManager.TomatoTask currentTask;
 
-    // Costo aproximado restante (para prioridad)
-    // MENOR costo => más prioridad
+    private int carriedTomatoes = 0;
+    private bool isBusy = false;
+
+    // Costo aproximado restante (para prioridad de paso)
     public float RemainingCost
     {
         get
@@ -76,73 +110,55 @@ public class BotController : MonoBehaviour
         }
     }
 
+    // ---------------- UNITY ----------------
+
     private void Start()
     {
         grid = GridManager.Instance;
         botManager = BotManager.Instance;
 
-        // calcular y alinear posición inicial al grid
+        // posición inicial
         CurrentGridPos = grid.WorldToGrid(transform.position);
         transform.position = grid.GridToWorld(CurrentGridPos);
+        homeGridPos = CurrentGridPos;
 
         worldFrom = transform.position;
         worldTo = transform.position;
-        stepProgress = 1f; // empieza quieto
+        stepProgress = 1f;
 
-        // registrar al bot en el manager
         botManager.RegisterBot(this, CurrentGridPos);
 
-        // SOLO si queremos probar con targets del inspector
+        if (dockingStationTransform != null)
+            dsGridPos = grid.WorldToGrid(dockingStationTransform.position);
+        if (ecTransform != null)
+            ecGridPos = grid.WorldToGrid(ecTransform.position);
+
         if (useInspectorTasks)
         {
-            // 1) Cargar tareas desde el inspector
-            if (taskTargets != null && taskTargets.Count > 0)
-            {
-                foreach (var t in taskTargets)
-                {
-                    if (t == null) continue;
-                    Vector2Int pos = grid.WorldToGrid(t.position);
-                    if (grid.IsWalkable(pos))
-                    {
-                        taskQueue.Enqueue(pos);
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"{name}: task {t.name} no está sobre un tile caminable");
-                    }
-                }
-            }
-            // 2) Si no hay lista de tareas, usamos el debugTarget
-            else if (debugTarget != null)
-            {
-                Vector2Int targetGridPos = grid.WorldToGrid(debugTarget.position);
-                if (grid.IsWalkable(targetGridPos))
-                {
-                    taskQueue.Enqueue(targetGridPos);
-                }
-                else
-                {
-                    Debug.LogWarning($"{name}: debugTarget no está sobre un tile caminable");
-                }
-            }
-
-            TryNextTask();
+            InitDebugTasks();
+        }
+        else
+        {
+            state = BotState.GoingToDS_Initial;
+            TryGoToDocking(); // pedimos turno para DS inicial
         }
     }
 
     private void Update()
     {
-        // 1) Si estamos a medio paso, solo animamos el movimiento entre tiles
+        if (isBusy)
+            return;
+
+        // animación entre tiles
         if (stepProgress < 1f)
         {
-            float delta = Time.deltaTime * stepsPerSecond; // tiles/seg
+            float delta = Time.deltaTime * stepsPerSecond;
             stepProgress += delta;
             float t = Mathf.Clamp01(stepProgress);
             transform.position = Vector3.Lerp(worldFrom, worldTo, t);
             return;
         }
 
-        // 2) Si ya terminamos el paso anterior, decidir siguiente tarea si hace falta
         if (useInspectorTasks)
         {
             if ((currentPath == null || currentPath.Count == 0) &&
@@ -154,10 +170,22 @@ public class BotController : MonoBehaviour
         }
         else
         {
-            if ((currentPath == null || currentPath.Count == 0) &&
-                !hasGoal &&
-                pendingTasks != null &&
-                pendingTasks.Count > 0)
+            // si estamos esperando DS, intentamos reclamarla
+            if (state == BotState.WaitingAtDS_Initial || state == BotState.WaitingAtDS_Final)
+            {
+                TryGoToDocking();
+            }
+            // si estamos esperando EC, intentamos reclamarla
+            else if (state == BotState.WaitingForEC)
+            {
+                TryGoToEC();
+            }
+            // si estamos cosechando y ya no tenemos ruta ni meta, elegimos nueva planta
+            else if (state == BotState.Harvesting &&
+                     (currentPath == null || currentPath.Count == 0) &&
+                     !hasGoal &&
+                     pendingTasks != null &&
+                     pendingTasks.Count > 0)
             {
                 TryNextTask();
             }
@@ -166,46 +194,182 @@ public class BotController : MonoBehaviour
         MoveAlongPath();
     }
 
+    // ---------------- MOVIMIENTO ENTRE TILES ----------------
+
     private void MoveAlongPath()
     {
-        // ¿hay que replantear la ruta hacia la misma meta?
         if (forceReplan && hasGoal)
         {
-            // OJO: tu GridManager debe tener esta versión de FindPath(start, goal, bot)
             currentPath = grid.FindPath(CurrentGridPos, currentGoal, this);
             currentPathIndex = 0;
             forceReplan = false;
         }
 
         if (currentPath == null || currentPath.Count == 0) return;
+
         if (currentPathIndex >= currentPath.Count)
         {
-            // ya llegamos a la meta actual -> siguiente tarea
-            TryNextTask();
+            OnArrivedToDestination();
             return;
         }
 
         Vector2Int targetGridPos = currentPath[currentPathIndex];
 
-        // pedimos permiso al BotManager, que decide con prioridad por RemainingCost
         bool canMove = botManager.TryMoveWithPriority(this, CurrentGridPos, targetGridPos);
         if (!canMove)
         {
-            // este "tick" lógico no nos movemos; ya veremos en el siguiente
             return;
         }
 
-        // movimiento por tiles: preparamos animación del paso
         worldFrom = grid.GridToWorld(CurrentGridPos);
-        CurrentGridPos = targetGridPos; // lógicamente ya estamos en el nuevo tile
+        CurrentGridPos = targetGridPos;
         worldTo = grid.GridToWorld(CurrentGridPos);
 
-        stepProgress = 0f; // empezamos a animar de from -> to
-
+        stepProgress = 0f;
         currentPathIndex++;
     }
 
-    // Elige la tarea más cercana (distancia Manhattan) de una lista
+    private void OnArrivedToDestination()
+    {
+        hasGoal = false;
+        currentPath.Clear();
+        currentPathIndex = 0;
+
+        if (useInspectorTasks)
+        {
+            TryNextTask();
+            return;
+        }
+
+        switch (state)
+        {
+            case BotState.GoingToDS_Initial:
+                StartCoroutine(WaitAtDockThenStartHarvest());
+                break;
+
+            case BotState.GoingToDS_Final:
+                StartCoroutine(WaitAtDockThenGoHome());
+                break;
+
+            case BotState.ReturningHome:
+                state = BotState.IdleFinished;
+                break;
+
+            case BotState.GoingToEC:
+                StartCoroutine(UnloadTomatoes());
+                break;
+
+            case BotState.Harvesting:
+                if (currentTask != null &&
+                    CurrentGridPos == currentTask.standPos)
+                {
+                    StartCoroutine(HarvestTomatoesAtCurrentTask());
+                }
+                else
+                {
+                    TryNextTask();
+                }
+                break;
+        }
+    }
+
+    // ---------------- ESTACIONES: DS / EC ----------------
+
+    private void TryGoToDocking()
+    {
+        // 1) Intentar ser el dueño de DS
+        if (botManager.TryClaimDocking(this))
+        {
+            // Si estábamos en un slot de cola, lo liberamos
+            botManager.ReleaseDockingQueueSlot(this);
+
+            // Ir directamente al tile de DS
+            if (state == BotState.WaitingAtDS_Initial)
+                state = BotState.GoingToDS_Initial;
+            else if (state == BotState.WaitingAtDS_Final)
+                state = BotState.GoingToDS_Final;
+
+            SetTargetInternal(dsGridPos);
+            return;
+        }
+
+        // 2) No hay turno todavía -> intentar obtener un slot de cola físico
+        if (botManager.TryGetDockingQueueSlot(this, out var queuePos))
+        {
+            if (CurrentGridPos != queuePos)
+            {
+                SetTargetInternal(queuePos);
+            }
+        }
+
+        // 3) Estado pasa a "esperando en DS"
+        if (state == BotState.GoingToDS_Initial)
+            state = BotState.WaitingAtDS_Initial;
+        else if (state == BotState.GoingToDS_Final)
+            state = BotState.WaitingAtDS_Final;
+    }
+
+    private void TryGoToEC()
+    {
+        // 1) Intentar ser dueño de EC
+        if (botManager.TryClaimEC(this))
+        {
+            botManager.ReleaseECQueueSlot(this);
+
+            state = BotState.GoingToEC;
+            SetTargetInternal(ecGridPos);
+            return;
+        }
+
+        // 2) No hay turno -> pedir un slot de cola cerca de EC
+        if (botManager.TryGetECQueueSlot(this, out var queuePos))
+        {
+            if (CurrentGridPos != queuePos)
+            {
+                SetTargetInternal(queuePos);
+            }
+        }
+
+        // 3) Marcamos que estamos esperando en EC
+        state = BotState.WaitingForEC;
+    }
+
+    // ---------------- TAREAS: SELECCIÓN Y RUTAS ----------------
+
+    private void InitDebugTasks()
+    {
+        if (taskTargets != null && taskTargets.Count > 0)
+        {
+            foreach (var t in taskTargets)
+            {
+                if (t == null) continue;
+                Vector2Int pos = grid.WorldToGrid(t.position);
+                if (grid.IsWalkable(pos))
+                {
+                    taskQueue.Enqueue(pos);
+                }
+                else
+                {
+                    Debug.LogWarning($"{name}: task {t.name} no está sobre un tile caminable");
+                }
+            }
+        }
+        else if (debugTarget != null)
+        {
+            Vector2Int targetGridPos = grid.WorldToGrid(debugTarget.position);
+            if (grid.IsWalkable(targetGridPos))
+            {
+                taskQueue.Enqueue(targetGridPos);
+            }
+            else
+            {
+                Debug.LogWarning($"{name}: debugTarget no está sobre un tile caminable");
+            }
+        }
+
+        TryNextTask();
+    }
+
     private TomatoFieldManager.TomatoTask PickClosestTask(
         List<TomatoFieldManager.TomatoTask> list,
         Vector2Int from)
@@ -228,7 +392,6 @@ public class BotController : MonoBehaviour
 
     private void TryNextTask()
     {
-        // --- MODO DEBUG: usa cola de Vector2Int ---
         if (useInspectorTasks)
         {
             if (taskQueue.Count == 0)
@@ -243,7 +406,9 @@ public class BotController : MonoBehaviour
             return;
         }
 
-        // --- MODO NORMAL: usa TomatoTask asignadas ---
+        if (state != BotState.Harvesting)
+            return;
+
         currentTask = null;
 
         if (pendingTasks == null)
@@ -253,7 +418,6 @@ public class BotController : MonoBehaviour
             return;
         }
 
-        // Si ya no hay pendientes pero sí bloqueadas, las reintentamos
         if (pendingTasks.Count == 0)
         {
             if (blockedTasks != null && blockedTasks.Count > 0)
@@ -263,33 +427,35 @@ public class BotController : MonoBehaviour
             }
             else
             {
-                currentPath.Clear();
-                hasGoal = false;
+                // no hay más plantas
+                if (carriedTomatoes > 0)
+                {
+                    TryGoToEC();
+                }
+                else
+                {
+                    state = BotState.GoingToDS_Final;
+                    TryGoToDocking();
+                }
                 return;
             }
         }
 
-        // Elegimos la tarea más cercana a la posición actual
         currentTask = PickClosestTask(pendingTasks, CurrentGridPos);
         pendingTasks.Remove(currentTask);
 
         Vector2Int targetGridPos = currentTask.standPos;
 
-        // Intentamos trazar un camino
         bool ok = SetTargetInternal(targetGridPos);
 
         if (!ok)
         {
-            // No hay camino: la mandamos a la lista de bloqueadas
             blockedTasks.Add(currentTask);
             currentTask = null;
-
-            // Intentar con otra tarea
             TryNextTask();
         }
     }
 
-    // Versión interna que devuelve true/false si hay camino
     private bool SetTargetInternal(Vector2Int targetGridPos)
     {
         currentGoal = targetGridPos;
@@ -308,38 +474,195 @@ public class BotController : MonoBehaviour
         return true;
     }
 
-    // Versión pública por si algún otro script la quiere usar "a la antigua"
     public void SetTarget(Vector2Int targetGridPos)
     {
         SetTargetInternal(targetGridPos);
     }
 
-    // llamado por BotManager cuando otro bot nos "gana" la celda
     public void ForceReplan()
     {
-        // en el siguiente "tick lógico" se recalculará la ruta hacia currentGoal
         forceReplan = true;
     }
 
-    // Llamado por TaskDistributor para darle sus tareas a este bot
     public void SetAssignedTasks(List<TomatoFieldManager.TomatoTask> tasks)
     {
         assignedTasks = tasks;
-
-        // Creamos las listas de trabajo
         pendingTasks = new List<TomatoFieldManager.TomatoTask>(tasks);
         blockedTasks = new List<TomatoFieldManager.TomatoTask>();
         currentTask = null;
 
-        // limpiamos cualquier queue anterior de modo debug
         taskQueue.Clear();
     }
+
+    // ---------------- CORRUTINAS ----------------
+
+    private IEnumerator WaitAtDockThenStartHarvest()
+    {
+        state = BotState.WaitingAtDS_Initial;
+        isBusy = true;
+        yield return new WaitForSeconds(dockWaitSeconds);
+        isBusy = false;
+
+        botManager.ReleaseDocking(this);
+
+        state = BotState.Harvesting;
+        TryNextTask();
+    }
+
+    private IEnumerator WaitAtDockThenGoHome()
+    {
+        state = BotState.WaitingAtDS_Final;
+        isBusy = true;
+        yield return new WaitForSeconds(dockWaitSeconds);
+        isBusy = false;
+
+        botManager.ReleaseDocking(this);
+
+        state = BotState.ReturningHome;
+        SetTargetInternal(homeGridPos);
+    }
+
+    private IEnumerator HarvestTomatoesAtCurrentTask()
+    {
+        if (currentTask == null)
+            yield break;
+
+        // Vamos a cosechar esta planta tantas veces como podamos
+        // hasta que:
+        //  - se nos llene la mochila, o
+        //  - se terminen los tomates de esta planta.
+        isBusy = true;
+
+        while (true)
+        {
+            int availableCapacity = capacity - carriedTomatoes;
+
+            // Sin capacidad antes de tomar algo
+            if (availableCapacity <= 0)
+            {
+                // Si todavía hay tomates en esta planta, la volvemos a poner
+                // en la lista de pendientes para regresar más tarde.
+                if (currentTask.tomatoes > 0 &&
+                    pendingTasks != null &&
+                    !pendingTasks.Contains(currentTask))
+                {
+                    pendingTasks.Add(currentTask);
+                }
+
+                isBusy = false;
+                TryGoToEC();      // mochila llena -> ir a EC
+                currentTask = null;
+                yield break;
+            }
+
+            // Si ya no quedan tomates aquí, salimos.
+            if (currentTask.tomatoes <= 0)
+            {
+                break;
+            }
+
+            // Simular tiempo de recolección de un solo tomate
+            yield return new WaitForSeconds(perTomatoPickupTime);
+
+            // Cargar uno a la mochila
+            carriedTomatoes++;
+
+            // Quitar visual + bajar conteo lógico
+            if (TomatoFieldManager.Instance != null)
+            {
+                TomatoFieldManager.Instance.ConsumeTomato(currentTask);
+            }
+            else
+            {
+                // Fallback por si algo raro pasa con el manager
+                currentTask.tomatoes = Mathf.Max(0, currentTask.tomatoes - 1);
+            }
+
+            // Por si en este mismo tomate llegamos a la capacidad
+            if (carriedTomatoes >= capacity)
+            {
+                if (currentTask.tomatoes > 0 &&
+                    pendingTasks != null &&
+                    !pendingTasks.Contains(currentTask))
+                {
+                    pendingTasks.Add(currentTask);
+                }
+
+                isBusy = false;
+                TryGoToEC();
+                currentTask = null;
+                yield break;
+            }
+        }
+
+        // Llegamos aquí porque se acabaron los tomates de esta planta
+        isBusy = false;
+
+        // Ya no la re-encolamos porque tomatoes == 0
+        currentTask = null;
+
+        // Si aun tenemos capacidad, seguimos con otra planta.
+        // Si no, igualmente vamos a EC (por seguridad).
+        if (carriedTomatoes > 0 && carriedTomatoes < capacity)
+        {
+            TryNextTask();
+        }
+        else if (carriedTomatoes >= capacity)
+        {
+            TryGoToEC();
+        }
+        else
+        {
+            // Caso borde: no tomamos nada (planta ya sin tomates)
+            TryNextTask();
+        }
+    }
+
+
+
+
+    private IEnumerator UnloadTomatoes()
+    {
+        if (carriedTomatoes <= 0)
+        {
+            state = BotState.Harvesting;
+            TryNextTask();
+            yield break;
+        }
+
+        state = BotState.Unloading;
+        isBusy = true;
+
+        int toDrop = carriedTomatoes;
+        for (int i = 0; i < toDrop; i++)
+        {
+            yield return new WaitForSeconds(perTomatoDropTime);
+            carriedTomatoes--;
+            // aquí luego ponemos bolita visual en EC
+        }
+
+        isBusy = false;
+        botManager.ReleaseEC(this);
+
+        if ((pendingTasks != null && pendingTasks.Count > 0) ||
+            (blockedTasks != null && blockedTasks.Count > 0))
+        {
+            state = BotState.Harvesting;
+            TryNextTask();
+        }
+        else
+        {
+            state = BotState.GoingToDS_Final;
+            TryGoToDocking();
+        }
+    }
+
+    // ---------------- GIZMOS ----------------
 
     private void OnDrawGizmosSelected()
     {
         if (grid == null) grid = GridManager.Instance;
 
-        // Tareas asignadas al bot
         if (assignedTasks != null)
         {
             Gizmos.color = Color.cyan;
@@ -350,7 +673,6 @@ public class BotController : MonoBehaviour
             }
         }
 
-        // Camino actual
         if (currentPath != null && currentPath.Count > 0)
         {
             Gizmos.color = Color.yellow;

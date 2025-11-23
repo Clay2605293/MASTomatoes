@@ -11,7 +11,6 @@ public class TaskDistributor : MonoBehaviour
         var field = TomatoFieldManager.Instance;
         if (field == null)
         {
-            Debug.LogError("TaskDistributor: no se encontró TomatoFieldManager en la escena.");
             return;
         }
 
@@ -22,13 +21,11 @@ public class TaskDistributor : MonoBehaviour
 
         if (bots.Count == 0)
         {
-            Debug.LogWarning("TaskDistributor: no hay bots asignados en la lista.");
             return;
         }
 
         if (tasks.Count == 0)
         {
-            Debug.LogWarning("TaskDistributor: TomatoFieldManager no tiene tareas (allTasks.Count == 0).");
             return;
         }
 
@@ -61,11 +58,6 @@ public class TaskDistributor : MonoBehaviour
             if (sublist.Count > 0)
             {
                 bots[i].SetAssignedTasks(sublist);
-                Debug.Log($"TaskDistributor: Bot {bots[i].name} recibió {sublist.Count} tareas.");
-            }
-            else
-            {
-                Debug.LogWarning($"TaskDistributor: Bot {bots[i].name} no recibió tareas.");
             }
 
             index += count;

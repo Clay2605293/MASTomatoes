@@ -5,10 +5,36 @@ public class BotManager : MonoBehaviour
 {
     public static BotManager Instance { get; private set; }
 
-    // Qué bot ocupa qué celda de grilla
-    private Dictionary<Vector2Int, BotController> occupiedCells = new();
+    // ----------------- OCUPACIÓN DE CELDAS -----------------
 
+    private Dictionary<Vector2Int, BotController> occupiedCells = new();
     private System.Random rng = new System.Random();
+
+    // ----------------- DOCKING STATION (DS) -----------------
+
+    [Header("Docking Station Queue")]
+    public List<Transform> dockingQueueSlots;   // puntos físicos de fila DS, en orden 1,2,3,...
+
+    private Vector2Int[] dockingQueueGridPos;
+    private bool dockingQueueBuilt = false;
+
+    private BotController dockingOwner;
+    private Queue<BotController> dockingQueueOrder = new();               // orden FIFO
+    private Dictionary<BotController, int> dockingQueueIndex = new();     // bot -> slot index
+
+    // ----------------- ENTREGA DE COSECHA (EC) -----------------
+
+    [Header("Entrega de Cosecha (EC) Queue")]
+    public List<Transform> ecQueueSlots;        // puntos físicos de fila EC, en orden 1,2,3,...
+
+    private Vector2Int[] ecQueueGridPos;
+    private bool ecQueueBuilt = false;
+
+    private BotController ecOwner;
+    private Queue<BotController> ecQueueOrder = new();
+    private Dictionary<BotController, int> ecQueueIndex = new();
+
+    // ----------------- UNITY -----------------
 
     private void Awake()
     {
@@ -18,37 +44,76 @@ public class BotManager : MonoBehaviour
             return;
         }
         Instance = this;
+        // NO calculamos las filas aquí para no depender del orden de Awake.
     }
+
+    // ----------------- HELPERS: CONSTRUIR POSICIONES DE FILA -----------------
+
+    private void EnsureDockingQueueGridPos()
+    {
+        if (dockingQueueBuilt) return;
+
+        var grid = GridManager.Instance;
+        if (grid == null) return; // se intentará de nuevo más tarde
+
+        if (dockingQueueSlots != null && dockingQueueSlots.Count > 0)
+        {
+            dockingQueueGridPos = new Vector2Int[dockingQueueSlots.Count];
+            for (int i = 0; i < dockingQueueSlots.Count; i++)
+            {
+                dockingQueueGridPos[i] = grid.WorldToGrid(dockingQueueSlots[i].position);
+            }
+        }
+        else
+        {
+            dockingQueueGridPos = new Vector2Int[0];
+        }
+
+        dockingQueueBuilt = true;
+    }
+
+    private void EnsureECQueueGridPos()
+    {
+        if (ecQueueBuilt) return;
+
+        var grid = GridManager.Instance;
+        if (grid == null) return; // se intentará de nuevo más tarde
+
+        if (ecQueueSlots != null && ecQueueSlots.Count > 0)
+        {
+            ecQueueGridPos = new Vector2Int[ecQueueSlots.Count];
+            for (int i = 0; i < ecQueueSlots.Count; i++)
+            {
+                ecQueueGridPos[i] = grid.WorldToGrid(ecQueueSlots[i].position);
+            }
+        }
+        else
+        {
+            ecQueueGridPos = new Vector2Int[0];
+        }
+
+        ecQueueBuilt = true;
+    }
+
+    // ----------------- OCUPACIÓN DE CELDAS -----------------
 
     public void RegisterBot(BotController bot, Vector2Int gridPos)
     {
-        // por si acaso ya había algo, lo sobreescribimos
         occupiedCells[gridPos] = bot;
     }
 
-    // Para que el GridManager pueda tratar bots como obstáculos
     public BotController GetBotAt(Vector2Int gridPos)
     {
         occupiedCells.TryGetValue(gridPos, out var bot);
         return bot;
     }
 
-    /// <summary>
-    /// Intenta mover al bot de 'from' a 'to'.
-    /// Devuelve true si el movimiento está autorizado.
-    /// - Si la celda destino está libre: se actualiza el diccionario y se permite el movimiento.
-    /// - Si está ocupada: NO se permite mover a nadie a esa celda en este tick.
-    ///   Solo se decide quién debe replantear su ruta (el que tiene MENOR prioridad).
-    /// </summary>
     public bool TryMoveWithPriority(BotController bot, Vector2Int from, Vector2Int to)
     {
-        // si es la misma celda, no hacemos nada especial
         if (from == to) return true;
 
-        // ¿está libre la celda destino?
         if (!occupiedCells.TryGetValue(to, out BotController other) || other == null)
         {
-            // Celda libre -> actualizamos ocupación y dejamos pasar
             if (occupiedCells.TryGetValue(from, out var current) && current == bot)
             {
                 occupiedCells.Remove(from);
@@ -57,18 +122,11 @@ public class BotManager : MonoBehaviour
             return true;
         }
 
-        // Si el otro soy yo mismo, no hay problema
-        if (other == bot)
-        {
-            return true;
-        }
-
-        // ----- CONFLICTO: la celda destino está ocupada por otro bot -----
+        if (other == bot) return true;
 
         float myCost = bot.RemainingCost;
         float otherCost = other.RemainingCost;
 
-        // MENOR costo => MÁS prioridad (está más cerca de terminar)
         bool iHaveHigherPriority = false;
         const float epsilon = 0.01f;
 
@@ -78,28 +136,204 @@ public class BotManager : MonoBehaviour
         }
         else if (Mathf.Abs(myCost - otherCost) <= epsilon)
         {
-            // desempate aleatorio
             iHaveHigherPriority = rng.NextDouble() < 0.5;
-        }
-        else
-        {
-            iHaveHigherPriority = false;
         }
 
         if (iHaveHigherPriority)
-        {
-            // YO tengo prioridad, entonces el otro es quien debe cambiar su ruta.
-            // PERO yo NO entro todavía a su casilla: me espero hasta que se mueva.
             other.ForceReplan();
-        }
         else
-        {
-            // El otro tiene prioridad, yo soy el que debe replantear.
             bot.ForceReplan();
+
+        return false;
+    }
+
+    // ----------------- DOCKING STATION (DS) -----------------
+
+    public bool TryClaimDocking(BotController bot)
+    {
+        // DS ocupado por otro
+        if (dockingOwner != null && dockingOwner != bot)
+            return false;
+
+        // DS libre
+        if (dockingOwner == null)
+        {
+            // Si hay fila, solo el de hasta adelante puede tomarlo
+            if (dockingQueueOrder.Count > 0)
+            {
+                if (dockingQueueOrder.Peek() != bot)
+                    return false;
+
+                dockingQueueOrder.Dequeue();
+                dockingQueueIndex.Remove(bot);
+            }
+
+            dockingOwner = bot;
+            return true;
         }
 
-        // En cualquier caso, en este tick NADIE se mueve a 'to'.
-        // Eso evita que dos bots se "traspasen" mágicamente.
+        // dockingOwner == bot
+        return true;
+    }
+
+    public void ReleaseDocking(BotController bot)
+    {
+        if (dockingOwner == bot)
+        {
+            dockingOwner = null;
+        }
+    }
+
+    public bool TryGetDockingQueueSlot(BotController bot, out Vector2Int queuePos)
+    {
+        EnsureDockingQueueGridPos();
+
+        if (dockingQueueGridPos == null || dockingQueueGridPos.Length == 0)
+        {
+            queuePos = default;
+            return false;
+        }
+
+        // Ya tiene slot
+        if (dockingQueueIndex.TryGetValue(bot, out int idxExisting))
+        {
+            queuePos = dockingQueueGridPos[idxExisting];
+            return true;
+        }
+
+        // Buscar primer slot libre
+        for (int i = 0; i < dockingQueueGridPos.Length; i++)
+        {
+            bool used = false;
+            foreach (var kv in dockingQueueIndex)
+            {
+                if (kv.Value == i)
+                {
+                    used = true;
+                    break;
+                }
+            }
+
+            if (!used)
+            {
+                dockingQueueIndex[bot] = i;
+                dockingQueueOrder.Enqueue(bot);
+                queuePos = dockingQueueGridPos[i];
+                return true;
+            }
+        }
+
+        queuePos = default;
         return false;
+    }
+
+    public void ReleaseDockingQueueSlot(BotController bot)
+    {
+        if (!dockingQueueIndex.Remove(bot))
+            return;
+
+        if (dockingQueueOrder.Count > 0)
+        {
+            var tmp = new Queue<BotController>();
+            while (dockingQueueOrder.Count > 0)
+            {
+                var b = dockingQueueOrder.Dequeue();
+                if (b != bot) tmp.Enqueue(b);
+            }
+            dockingQueueOrder = tmp;
+        }
+    }
+
+    // ----------------- EC (ENTREGA DE COSECHA) -----------------
+
+    public bool TryClaimEC(BotController bot)
+    {
+        if (ecOwner != null && ecOwner != bot)
+            return false;
+
+        if (ecOwner == null)
+        {
+            // Si hay fila, solo el primero puede entrar
+            if (ecQueueOrder.Count > 0)
+            {
+                if (ecQueueOrder.Peek() != bot)
+                    return false;
+
+                ecQueueOrder.Dequeue();
+                ecQueueIndex.Remove(bot);
+            }
+
+            ecOwner = bot;
+            return true;
+        }
+
+        // ecOwner == bot
+        return true;
+    }
+
+    public void ReleaseEC(BotController bot)
+    {
+        if (ecOwner == bot)
+        {
+            ecOwner = null;
+        }
+    }
+
+    public bool TryGetECQueueSlot(BotController bot, out Vector2Int queuePos)
+    {
+        EnsureECQueueGridPos();
+
+        if (ecQueueGridPos == null || ecQueueGridPos.Length == 0)
+        {
+            queuePos = default;
+            return false;
+        }
+
+        if (ecQueueIndex.TryGetValue(bot, out int idxExisting))
+        {
+            queuePos = ecQueueGridPos[idxExisting];
+            return true;
+        }
+
+        for (int i = 0; i < ecQueueGridPos.Length; i++)
+        {
+            bool used = false;
+            foreach (var kv in ecQueueIndex)
+            {
+                if (kv.Value == i)
+                {
+                    used = true;
+                    break;
+                }
+            }
+
+            if (!used)
+            {
+                ecQueueIndex[bot] = i;
+                ecQueueOrder.Enqueue(bot);
+                queuePos = ecQueueGridPos[i];
+                return true;
+            }
+        }
+
+        queuePos = default;
+        return false;
+    }
+
+    public void ReleaseECQueueSlot(BotController bot)
+    {
+        if (!ecQueueIndex.Remove(bot))
+            return;
+
+        if (ecQueueOrder.Count > 0)
+        {
+            var tmp = new Queue<BotController>();
+            while (ecQueueOrder.Count > 0)
+            {
+                var b = ecQueueOrder.Dequeue();
+                if (b != bot) tmp.Enqueue(b);
+            }
+            ecQueueOrder = tmp;
+        }
     }
 }

@@ -11,8 +11,11 @@ public class GridManager : MonoBehaviour
     // Mapa lógico: de coordenadas de grilla -> TileInfo
     private Dictionary<Vector2Int, TileInfo> tiles;
 
-    // Obstáculos dinámicos (humanos, filas bloqueadas temporalmente, etc.)
+    // Bloqueos dinámicos (obstáculos temporales, GridObstacle, etc.)
     private HashSet<Vector2Int> dynamicBlocked = new HashSet<Vector2Int>();
+
+    // Exponer lectura para TomatoFieldManager
+    public IReadOnlyDictionary<Vector2Int, TileInfo> AllTiles => tiles;
 
     private void Awake()
     {
@@ -47,58 +50,32 @@ public class GridManager : MonoBehaviour
             {
                 tiles.Add(gridPos, tile);
             }
-            else
-            {
-                // Por si hay dos tiles en el mismo lugar (no debería)
-                Debug.LogWarning($"Tile duplicado en {gridPos}");
-            }
         }
 
-        Debug.Log($"Grid construido con {tiles.Count} tiles.");
     }
 
-    // ---- helpers de walkability ----
+    // -------- API básica --------
 
-    // Solo revisa el tile estático (piso vs cama vs fuera)
-    private bool IsWalkableStatic(Vector2Int gridPos)
-    {
-        if (tiles.TryGetValue(gridPos, out TileInfo tile))
-        {
-            return tile.walkable;
-        }
-        return false;
-    }
-
-    // Versión simple: solo estáticos + bloqueos dinámicos (NO bots)
     public bool IsWalkable(Vector2Int gridPos)
     {
-        if (!IsWalkableStatic(gridPos)) return false;
-        if (dynamicBlocked.Contains(gridPos)) return false;
+        if (!tiles.TryGetValue(gridPos, out TileInfo tile))
+            return false;
+
+        if (!tile.walkable)
+            return false;
+
+        // además revisamos bloqueos dinámicos
+        if (dynamicBlocked.Contains(gridPos))
+            return false;
+
         return true;
     }
 
-    // Bloqueos dinámicos (para humanos / filas cerradas)
-    public void SetDynamicBlocked(Vector2Int gridPos, bool blocked)
+    public TileInfo GetTile(Vector2Int gridPos)
     {
-        if (blocked) dynamicBlocked.Add(gridPos);
-        else dynamicBlocked.Remove(gridPos);
+        tiles.TryGetValue(gridPos, out var tile);
+        return tile;
     }
-
-    public void SetTileWalkable(Vector2Int gridPos, bool walkable)
-    {
-        if (tiles.TryGetValue(gridPos, out TileInfo tile))
-        {
-            tile.walkable = walkable;
-        }
-    }
-
-
-    public bool IsDynamicallyBlocked(Vector2Int gridPos)
-    {
-        return dynamicBlocked.Contains(gridPos);
-    }
-
-    // ---- conversión mundo <-> grilla ----
 
     public Vector3 GridToWorld(Vector2Int gridPos)
     {
@@ -115,10 +92,34 @@ public class GridManager : MonoBehaviour
         return new Vector2Int(gx, gz);
     }
 
-    // ---- Pathfinding BFS en 4 direcciones, considerando:
-    // - tiles estáticos
-    // - bloqueos dinámicos
-    // - otros bots como obstáculos (excepto en la casilla goal) ----
+    // -------- Soporte para obstáculos dinámicos (usado por GridObstacle) --------
+
+    /// <summary>
+    /// Marca / desmarca una celda como bloqueada dinámicamente
+    /// sin tocar el flag walkable del TileInfo.
+    /// </summary>
+    public void SetDynamicBlocked(Vector2Int gridPos, bool blocked)
+    {
+        if (blocked)
+            dynamicBlocked.Add(gridPos);
+        else
+            dynamicBlocked.Remove(gridPos);
+    }
+
+    /// <summary>
+    /// Cambia el flag walkable del TileInfo (obstáculos "permanentes").
+    /// </summary>
+    public void SetTileWalkable(Vector2Int gridPos, bool walkable)
+    {
+        if (tiles.TryGetValue(gridPos, out var tile))
+        {
+            tile.walkable = walkable;
+        }
+    }
+
+    // -------- Pathfinding simple (BFS) --------
+
+    // requester se usa para no considerar al propio bot como obstáculo
     public List<Vector2Int> FindPath(Vector2Int start, Vector2Int goal, BotController requester = null)
     {
         Queue<Vector2Int> frontier = new Queue<Vector2Int>();
@@ -146,25 +147,23 @@ public class GridManager : MonoBehaviour
             {
                 Vector2Int next = current + dir;
 
-                // fuera del grid
-                if (!tiles.ContainsKey(next)) continue;
+                if (!tiles.ContainsKey(next)) continue;      // fuera del grid
+                if (!IsWalkable(next)) continue;             // cama de cultivo / obstáculo dinamico
 
-                // camas / paredes
-                if (!IsWalkableStatic(next)) continue;
-
-                // bloqueos dinámicos (humanos, filas cerradas)
-                if (dynamicBlocked.Contains(next)) continue;
-
-                // otros bots como obstáculos dinámicos
-                if (requester != null && BotManager.Instance != null)
+                // Evitar paredes vivas: otros bots
+                BotController otherBot = null;
+                if (BotManager.Instance != null)
                 {
-                    BotController other = BotManager.Instance.GetBotAt(next);
-                    // si hay otro bot en esa celda y NO es la meta, evitamos pasar por ahí
-                    if (other != null && other != requester && next != goal)
-                        continue;
+                    otherBot = BotManager.Instance.GetBotAt(next);
                 }
 
-                if (cameFrom.ContainsKey(next)) continue; // ya visitado
+                // No pisar a otros bots, excepto:
+                // - si es el propio requester
+                // - o si es el goal (para llegar a DS/EC, etc.)
+                if (otherBot != null && otherBot != requester && next != goal)
+                    continue;
+
+                if (cameFrom.ContainsKey(next)) continue;    // ya visitado
 
                 frontier.Enqueue(next);
                 cameFrom[next] = current;
@@ -189,13 +188,4 @@ public class GridManager : MonoBehaviour
         path.Reverse();
         return path;
     }
-
-    public IReadOnlyDictionary<Vector2Int, TileInfo> AllTiles => tiles;
-
-    public TileInfo GetTile(Vector2Int gridPos)
-    {
-        tiles.TryGetValue(gridPos, out var t);
-        return t;
-    }
-
 }

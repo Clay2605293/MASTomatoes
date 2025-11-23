@@ -5,23 +5,27 @@ public class TomatoFieldManager : MonoBehaviour
 {
     public static TomatoFieldManager Instance { get; private set; }
 
-    // Tarea lógica de cosecha
+    [System.Serializable]
     public class TomatoTask
     {
         public Vector2Int standPos;  // tile donde se para el bot
         public Vector2Int plantPos;  // tile de la cama con planta
-        public int tomatoes;         // 1–5 tomates
-        public bool completed = false;
+        public int tomatoes;         // tomates restantes (lógicos)
+
+        // Tomates visuales instanciados en la planta
+        public List<GameObject> tomatoVisuals = new List<GameObject>();
     }
 
+    [Header("Tareas de cosecha")]
     public List<TomatoTask> allTasks = new List<TomatoTask>();
-
-    [Header("Visual de tomates")]
-    public GameObject tomatoPrefab;       // bolita de tomate
-    public float tomatoHeightStep = 0.2f; // separación en altura (Y) entre bolitas
 
     private GridManager grid;
     private bool tasksBuilt = false;
+
+    [Header("Visual de tomates")]
+    public GameObject tomatoPrefab;       // tu esfera/bolita de tomate
+    public float tomatoHeightStep = 0.15f; // separación en altura entre tomates
+    public float tomatoRadiusOffset = 0.15f; // pequeño offset random en X/Z
 
     private void Awake()
     {
@@ -39,7 +43,7 @@ public class TomatoFieldManager : MonoBehaviour
         EnsureTasksBuilt();
     }
 
-    // Garantiza que las tareas estén listas (por si alguien las pide en Start)
+    // Garantiza que las tareas se construyan solo una vez
     public void EnsureTasksBuilt()
     {
         if (tasksBuilt) return;
@@ -52,18 +56,7 @@ public class TomatoFieldManager : MonoBehaviour
         allTasks.Clear();
 
         if (grid == null)
-        {
             grid = GridManager.Instance;
-        }
-
-        // (opcional) limpiar tomates viejos si vuelves a construir
-        if (tomatoPrefab != null)
-        {
-            foreach (Transform child in transform)
-            {
-                Destroy(child.gameObject);
-            }
-        }
 
         // Recorremos todos los tiles del grid
         foreach (var kvp in grid.AllTiles)
@@ -71,7 +64,6 @@ public class TomatoFieldManager : MonoBehaviour
             Vector2Int pos = kvp.Key;
             TileInfo tile = kvp.Value;
 
-            // Solo nos interesan los tiles donde se para el bot para cosechar
             if (!tile.isHarvestSpot)
                 continue;
 
@@ -101,43 +93,74 @@ public class TomatoFieldManager : MonoBehaviour
 
             if (plantPos == null)
             {
-                Debug.LogWarning($"HarvestSpot en {pos} no encontró planta vecina. Revisa layout.");
+                Debug.LogWarning(
+                    $"HarvestSpot en {pos} no encontró planta vecina. Revisa layout."
+                );
                 continue;
             }
 
-            // Cuántos tomates tiene esta planta
-            int tomatoCount = Random.Range(1, 6); // 1–5
-
+            // Crear tarea con tomates aleatorios
             TomatoTask task = new TomatoTask
             {
                 standPos = pos,
                 plantPos = plantPos.Value,
-                tomatoes = tomatoCount
+                tomatoes = Random.Range(1, 6),
+                tomatoVisuals = new List<GameObject>()
             };
 
+            // Instanciar tomates visuales sobre la planta
+            SpawnTomatoesForTask(task);
+
             allTasks.Add(task);
-
-            // --------- Visual: instanciar las bolitas de tomate ----------
-            if (tomatoPrefab != null)
-            {
-                // Centro del tile de planta
-                Vector3 basePos = grid.GridToWorld(plantPos.Value);
-
-                for (int i = 0; i < tomatoCount; i++)
-                {
-                    float yOffset = tomatoHeightStep * (i + 1);
-                    Vector3 tomatoPos = basePos + new Vector3(0f, yOffset, 0f);
-
-                    Instantiate(
-                        tomatoPrefab,
-                        tomatoPos,
-                        Quaternion.identity,
-                        this.transform   // las cuelgo del TomatoFieldManager
-                    );
-                }
-            }
         }
 
         Debug.Log($"TomatoFieldManager: generadas {allTasks.Count} tareas de cosecha.");
+    }
+
+    private void SpawnTomatoesForTask(TomatoTask task)
+    {
+        if (tomatoPrefab == null)
+        {
+            Debug.LogWarning("TomatoFieldManager: tomatoPrefab no asignado en el inspector.");
+            return;
+        }
+
+        // Posición base en mundo de la planta
+        Vector3 basePos = grid.GridToWorld(task.plantPos);
+
+        for (int i = 0; i < task.tomatoes; i++)
+        {
+            // Pequeño random en X/Z para que no queden perfectamente alineados
+            float offsetX = Random.Range(-tomatoRadiusOffset, tomatoRadiusOffset);
+            float offsetZ = Random.Range(-tomatoRadiusOffset, tomatoRadiusOffset);
+            float offsetY = (i + 0.5f) * tomatoHeightStep;
+
+            Vector3 spawnPos = basePos + new Vector3(offsetX, offsetY, offsetZ);
+
+            GameObject go = Instantiate(tomatoPrefab, spawnPos, Quaternion.identity, transform);
+            task.tomatoVisuals.Add(go);
+        }
+    }
+
+    /// <summary>
+    /// Consume visualmente 1 tomate de la tarea dada.
+    /// También decrementa el contador lógico de tomates.
+    /// </summary>
+    public void ConsumeTomato(TomatoTask task)
+    {
+        if (task == null) return;
+        if (task.tomatoes <= 0) return;
+
+        task.tomatoes--;
+
+        if (task.tomatoVisuals != null && task.tomatoVisuals.Count > 0)
+        {
+            int idx = task.tomatoVisuals.Count - 1; // quitamos el último
+            GameObject go = task.tomatoVisuals[idx];
+            task.tomatoVisuals.RemoveAt(idx);
+
+            if (go != null)
+                Destroy(go);
+        }
     }
 }
