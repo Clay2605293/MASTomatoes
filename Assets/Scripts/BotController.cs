@@ -52,6 +52,18 @@ public class BotController : MonoBehaviour
     private GridManager grid;
     private BotManager botManager;
 
+    // --- Estadísticas de recolección ---
+    [Header("Stats de recolección")]
+    [Tooltip("Cuántos tomates debe recolectar este bot para medir su tiempo")]
+    public int targetTomatoesForStats = 50;
+
+    // Variables internas para estadísticas
+    private int totalTomatoesCollected = 0;
+    private bool timingStarted = false;
+    private float startCollectionTime = 0f;
+    private float endCollectionTime = 0f;
+    private bool statsReported = false;
+
     private List<Vector2Int> currentPath = new();
     private int currentPathIndex = 0;
 
@@ -566,6 +578,30 @@ public class BotController : MonoBehaviour
 
             // Cargar uno a la mochila
             carriedTomatoes++;
+
+            // ---- Lógica de estadísticas de recolección ----
+            totalTomatoesCollected++;
+
+            if (!timingStarted)
+            {
+                timingStarted = true;
+                startCollectionTime = Time.time;
+            }
+
+            if (!statsReported && totalTomatoesCollected >= targetTomatoesForStats)
+            {
+                statsReported = true;
+                endCollectionTime = Time.time;
+                float elapsed = endCollectionTime - startCollectionTime;
+
+                Debug.Log($"[Stats] Bot '{name}' recolectó {targetTomatoesForStats} tomates en {elapsed:F2} segundos.");
+
+                if (botManager != null)
+                {
+                    botManager.ReportBotFinished(elapsed);
+                }
+            }
+            // ---- Fin lógica de estadísticas ----
 
             // Quitar visual + bajar conteo lógico
             if (TomatoFieldManager.Instance != null)

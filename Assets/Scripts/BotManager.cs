@@ -10,6 +10,16 @@ public class BotManager : MonoBehaviour
     private Dictionary<Vector2Int, BotController> occupiedCells = new();
     private System.Random rng = new System.Random();
 
+    // ----------------- ESTADÍSTICAS GLOBALES DE BOTS -----------------
+    [Header("Stats de bots")]
+    [Tooltip("Cuántos bots esperamos que terminen para calcular el promedio")]
+    public int expectedBotsForStats = 5;
+
+    private int botsFinishedForStats = 0;
+    private float sumTimesForStats = 0f;
+    private float minTimeForStats = float.MaxValue;
+    private float maxTimeForStats = 0f;
+
     // ----------------- DOCKING STATION (DS) -----------------
 
     [Header("Docking Station Queue")]
@@ -334,6 +344,25 @@ public class BotManager : MonoBehaviour
                 if (b != bot) tmp.Enqueue(b);
             }
             ecQueueOrder = tmp;
+        }
+    }
+
+    // ----------------- MÉTODO PARA REPORTAR TIEMPOS -----------------
+    public void ReportBotFinished(float timeSeconds)
+    {
+        botsFinishedForStats++;
+        sumTimesForStats += timeSeconds;
+
+        if (timeSeconds < minTimeForStats) minTimeForStats = timeSeconds;
+        if (timeSeconds > maxTimeForStats) maxTimeForStats = timeSeconds;
+
+        Debug.Log($"[Stats] Bot terminado #{botsFinishedForStats} con tiempo = {timeSeconds:F2} s");
+
+        if (botsFinishedForStats == expectedBotsForStats)
+        {
+            float average = sumTimesForStats / expectedBotsForStats;
+            Debug.Log($"[Stats] Tiempo promedio de {expectedBotsForStats} bots para recolectar los tomates objetivo: {average:F2} segundos.");
+            Debug.Log($"[Stats] Min: {minTimeForStats:F2} s, Max: {maxTimeForStats:F2} s");
         }
     }
 }
