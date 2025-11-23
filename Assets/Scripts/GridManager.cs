@@ -189,4 +189,13 @@ public class GridManager : MonoBehaviour
         path.Reverse();
         return path;
     }
+
+    public IReadOnlyDictionary<Vector2Int, TileInfo> AllTiles => tiles;
+
+    public TileInfo GetTile(Vector2Int gridPos)
+    {
+        tiles.TryGetValue(gridPos, out var t);
+        return t;
+    }
+
 }

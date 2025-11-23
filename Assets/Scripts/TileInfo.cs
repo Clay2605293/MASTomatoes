@@ -1,10 +1,17 @@
-using UnityEngine;
+using UnityEngine;  
 
 public class TileInfo : MonoBehaviour
 {
-    [Tooltip("¿Se puede caminar sobre este tile?")]
+    // Posición de este tile en el grid lógico
+    public Vector2Int gridPos;
+
+    // Si se puede caminar encima (pasillo) o no (cama de cultivo)
     public bool walkable = true;
 
-    // Posición en coordenadas de grilla (x,z)
-    [HideInInspector] public Vector2Int gridPos;
+    [Header("Tomates / Cosecha")]
+    // Tile donde se para el bot para cosechar
+    public bool isHarvestSpot = false;
+
+    // Tile de cama que tiene planta (dirt con tomate)
+    public bool hasPlant = false;
 }

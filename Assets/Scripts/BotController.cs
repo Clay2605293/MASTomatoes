@@ -12,12 +12,16 @@ public class BotController : MonoBehaviour
     public Transform debugTarget;          // destino único de prueba (opcional)
     public List<Transform> taskTargets;    // lista de destinos (tomates, zonas, etc.)
 
+    [Header("Config")]
+    public bool useInspectorTasks = false; // si true, usa taskTargets/debugTarget
+
     private GridManager grid;
     private BotManager botManager;
 
     private List<Vector2Int> currentPath = new List<Vector2Int>();
     private int currentPathIndex = 0;
 
+    // Cola solo para modo debug (useInspectorTasks)
     private Queue<Vector2Int> taskQueue = new Queue<Vector2Int>();
 
     // posición actual en coordenadas de grilla
@@ -36,6 +40,18 @@ public class BotController : MonoBehaviour
     // 1 = llegó al destino del paso; 0 = inicio del paso
     private float stepProgress = 1f;
 
+    // --- Sistema de tareas "reales" (TomatoTask) ---
+
+    // Lista completa de tareas que el TaskDistributor le asignó a este bot
+    private List<TomatoFieldManager.TomatoTask> assignedTasks;
+
+    // Subconjuntos de trabajo
+    private List<TomatoFieldManager.TomatoTask> pendingTasks = new();
+    private List<TomatoFieldManager.TomatoTask> blockedTasks = new();
+
+    // Tarea actual que está intentando ejecutar
+    private TomatoFieldManager.TomatoTask currentTask;
+
     // Costo aproximado restante (para prioridad)
     // MENOR costo => más prioridad
     public float RemainingCost
@@ -46,10 +62,17 @@ public class BotController : MonoBehaviour
             if (currentPath != null && currentPath.Count > 0)
                 pathRemaining = currentPath.Count - currentPathIndex;
 
-            // peso arbitrario para tareas pendientes
-            int tasksRemaining = taskQueue.Count * 10;
+            int tasksRemaining;
+            if (useInspectorTasks)
+            {
+                tasksRemaining = taskQueue.Count;
+            }
+            else
+            {
+                tasksRemaining = pendingTasks != null ? pendingTasks.Count : 0;
+            }
 
-            return pathRemaining + tasksRemaining;
+            return pathRemaining + tasksRemaining * 10;
         }
     }
 
@@ -69,38 +92,42 @@ public class BotController : MonoBehaviour
         // registrar al bot en el manager
         botManager.RegisterBot(this, CurrentGridPos);
 
-        // 1) Cargar tareas desde el inspector
-        if (taskTargets != null && taskTargets.Count > 0)
+        // SOLO si queremos probar con targets del inspector
+        if (useInspectorTasks)
         {
-            foreach (var t in taskTargets)
+            // 1) Cargar tareas desde el inspector
+            if (taskTargets != null && taskTargets.Count > 0)
             {
-                if (t == null) continue;
-                Vector2Int pos = grid.WorldToGrid(t.position);
-                if (grid.IsWalkable(pos))
+                foreach (var t in taskTargets)
                 {
-                    taskQueue.Enqueue(pos);
+                    if (t == null) continue;
+                    Vector2Int pos = grid.WorldToGrid(t.position);
+                    if (grid.IsWalkable(pos))
+                    {
+                        taskQueue.Enqueue(pos);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"{name}: task {t.name} no está sobre un tile caminable");
+                    }
+                }
+            }
+            // 2) Si no hay lista de tareas, usamos el debugTarget
+            else if (debugTarget != null)
+            {
+                Vector2Int targetGridPos = grid.WorldToGrid(debugTarget.position);
+                if (grid.IsWalkable(targetGridPos))
+                {
+                    taskQueue.Enqueue(targetGridPos);
                 }
                 else
                 {
-                    Debug.LogWarning($"{name}: task {t.name} no está sobre un tile caminable");
+                    Debug.LogWarning($"{name}: debugTarget no está sobre un tile caminable");
                 }
             }
-        }
-        // 2) Si no hay lista de tareas, usamos el debugTarget
-        else if (debugTarget != null)
-        {
-            Vector2Int targetGridPos = grid.WorldToGrid(debugTarget.position);
-            if (grid.IsWalkable(targetGridPos))
-            {
-                taskQueue.Enqueue(targetGridPos);
-            }
-            else
-            {
-                Debug.LogWarning($"{name}: debugTarget no está sobre un tile caminable");
-            }
-        }
 
-        TryNextTask();
+            TryNextTask();
+        }
     }
 
     private void Update()
@@ -108,14 +135,34 @@ public class BotController : MonoBehaviour
         // 1) Si estamos a medio paso, solo animamos el movimiento entre tiles
         if (stepProgress < 1f)
         {
-            float delta = Time.deltaTime * stepsPerSecond; // stepsPerSecond = tiles/seg
+            float delta = Time.deltaTime * stepsPerSecond; // tiles/seg
             stepProgress += delta;
             float t = Mathf.Clamp01(stepProgress);
             transform.position = Vector3.Lerp(worldFrom, worldTo, t);
             return;
         }
 
-        // 2) Si ya terminamos el paso anterior, podemos decidir el siguiente
+        // 2) Si ya terminamos el paso anterior, decidir siguiente tarea si hace falta
+        if (useInspectorTasks)
+        {
+            if ((currentPath == null || currentPath.Count == 0) &&
+                taskQueue.Count > 0 &&
+                !hasGoal)
+            {
+                TryNextTask();
+            }
+        }
+        else
+        {
+            if ((currentPath == null || currentPath.Count == 0) &&
+                !hasGoal &&
+                pendingTasks != null &&
+                pendingTasks.Count > 0)
+            {
+                TryNextTask();
+            }
+        }
+
         MoveAlongPath();
     }
 
@@ -124,6 +171,7 @@ public class BotController : MonoBehaviour
         // ¿hay que replantear la ruta hacia la misma meta?
         if (forceReplan && hasGoal)
         {
+            // OJO: tu GridManager debe tener esta versión de FindPath(start, goal, bot)
             currentPath = grid.FindPath(CurrentGridPos, currentGoal, this);
             currentPathIndex = 0;
             forceReplan = false;
@@ -157,21 +205,92 @@ public class BotController : MonoBehaviour
         currentPathIndex++;
     }
 
+    // Elige la tarea más cercana (distancia Manhattan) de una lista
+    private TomatoFieldManager.TomatoTask PickClosestTask(
+        List<TomatoFieldManager.TomatoTask> list,
+        Vector2Int from)
+    {
+        TomatoFieldManager.TomatoTask best = null;
+        int bestDist = int.MaxValue;
+
+        foreach (var t in list)
+        {
+            int d = Mathf.Abs(t.standPos.x - from.x) + Mathf.Abs(t.standPos.y - from.y);
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = t;
+            }
+        }
+
+        return best;
+    }
+
     private void TryNextTask()
     {
-        if (taskQueue.Count == 0)
+        // --- MODO DEBUG: usa cola de Vector2Int ---
+        if (useInspectorTasks)
         {
-            // no hay más tareas
+            if (taskQueue.Count == 0)
+            {
+                currentPath.Clear();
+                hasGoal = false;
+                return;
+            }
+
+            Vector2Int nextTarget = taskQueue.Dequeue();
+            SetTargetInternal(nextTarget);
+            return;
+        }
+
+        // --- MODO NORMAL: usa TomatoTask asignadas ---
+        currentTask = null;
+
+        if (pendingTasks == null)
+        {
             currentPath.Clear();
             hasGoal = false;
             return;
         }
 
-        Vector2Int nextTarget = taskQueue.Dequeue();
-        SetTarget(nextTarget);
+        // Si ya no hay pendientes pero sí bloqueadas, las reintentamos
+        if (pendingTasks.Count == 0)
+        {
+            if (blockedTasks != null && blockedTasks.Count > 0)
+            {
+                pendingTasks.AddRange(blockedTasks);
+                blockedTasks.Clear();
+            }
+            else
+            {
+                currentPath.Clear();
+                hasGoal = false;
+                return;
+            }
+        }
+
+        // Elegimos la tarea más cercana a la posición actual
+        currentTask = PickClosestTask(pendingTasks, CurrentGridPos);
+        pendingTasks.Remove(currentTask);
+
+        Vector2Int targetGridPos = currentTask.standPos;
+
+        // Intentamos trazar un camino
+        bool ok = SetTargetInternal(targetGridPos);
+
+        if (!ok)
+        {
+            // No hay camino: la mandamos a la lista de bloqueadas
+            blockedTasks.Add(currentTask);
+            currentTask = null;
+
+            // Intentar con otra tarea
+            TryNextTask();
+        }
     }
 
-    public void SetTarget(Vector2Int targetGridPos)
+    // Versión interna que devuelve true/false si hay camino
+    private bool SetTargetInternal(Vector2Int targetGridPos)
     {
         currentGoal = targetGridPos;
         hasGoal = true;
@@ -179,10 +298,20 @@ public class BotController : MonoBehaviour
         currentPath = grid.FindPath(CurrentGridPos, targetGridPos, this);
         currentPathIndex = 0;
 
-        if (currentPath.Count == 0)
+        if (currentPath == null || currentPath.Count == 0)
         {
             Debug.Log($"{name}: no se encontró camino hacia {targetGridPos}");
+            hasGoal = false;
+            return false;
         }
+
+        return true;
+    }
+
+    // Versión pública por si algún otro script la quiere usar "a la antigua"
+    public void SetTarget(Vector2Int targetGridPos)
+    {
+        SetTargetInternal(targetGridPos);
     }
 
     // llamado por BotManager cuando otro bot nos "gana" la celda
@@ -190,5 +319,50 @@ public class BotController : MonoBehaviour
     {
         // en el siguiente "tick lógico" se recalculará la ruta hacia currentGoal
         forceReplan = true;
+    }
+
+    // Llamado por TaskDistributor para darle sus tareas a este bot
+    public void SetAssignedTasks(List<TomatoFieldManager.TomatoTask> tasks)
+    {
+        assignedTasks = tasks;
+
+        // Creamos las listas de trabajo
+        pendingTasks = new List<TomatoFieldManager.TomatoTask>(tasks);
+        blockedTasks = new List<TomatoFieldManager.TomatoTask>();
+        currentTask = null;
+
+        // limpiamos cualquier queue anterior de modo debug
+        taskQueue.Clear();
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (grid == null) grid = GridManager.Instance;
+
+        // Tareas asignadas al bot
+        if (assignedTasks != null)
+        {
+            Gizmos.color = Color.cyan;
+            for (int i = 0; i < assignedTasks.Count; i++)
+            {
+                Vector3 p = grid.GridToWorld(assignedTasks[i].standPos) + Vector3.up * 0.1f;
+                Gizmos.DrawCube(p, Vector3.one * 0.3f);
+            }
+        }
+
+        // Camino actual
+        if (currentPath != null && currentPath.Count > 0)
+        {
+            Gizmos.color = Color.yellow;
+            Vector3 prev = transform.position;
+
+            for (int i = currentPathIndex; i < currentPath.Count; i++)
+            {
+                Vector3 p = grid.GridToWorld(currentPath[i]) + Vector3.up * 0.05f;
+                Gizmos.DrawSphere(p, 0.1f);
+                Gizmos.DrawLine(prev, p);
+                prev = p;
+            }
+        }
     }
 }
