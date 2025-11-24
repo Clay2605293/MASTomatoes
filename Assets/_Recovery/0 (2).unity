@@ -4268,7 +4268,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
-      value: 0.25
+      value: 4.37
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: ecTransform
@@ -4276,15 +4276,15 @@ PrefabInstance:
       objectReference: {fileID: 657595441}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: stepsPerSecond
-      value: 7.92
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoDropTime
-      value: 0.1
+      value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoPickupTime
-      value: 3.12
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: taskTargets.Array.size
@@ -41622,11 +41622,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1360112203}
-  - {fileID: 1105096667}
-  - {fileID: 1343290691}
-  - {fileID: 1511902218}
-  - {fileID: 1583813891}
-  - {fileID: 1599705924}
   m_Father: {fileID: 1453599413}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &560189820
@@ -51929,63 +51924,6 @@ MonoBehaviour:
   walkable: 0
   isHarvestSpot: 0
   hasPlant: 1
---- !u!1001 &703101896
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 560189819}
-    m_Modifications:
-    - target: {fileID: 151211277563178877, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_Name
-      value: Charge STATION
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -17.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -10.16
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c25b011fd40bffa409be2828a189f819, type: 3}
 --- !u!1 &703246121 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8585380147040446225, guid: a4b886284d3086f42b6a7f007fa73671, type: 3}
@@ -68138,63 +68076,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7532437254635136482, guid: c769b682cc1beaf4e82cfb7651fca607, type: 3}
   m_PrefabInstance: {fileID: 907694414}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &907903900
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 560189819}
-    m_Modifications:
-    - target: {fileID: 151211277563178877, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_Name
-      value: Charge STATION
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -21.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -10.16
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c25b011fd40bffa409be2828a189f819, type: 3}
 --- !u!1 &909398072 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8585380147040446225, guid: a4b886284d3086f42b6a7f007fa73671, type: 3}
@@ -80789,7 +80670,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
-      value: 0.25
+      value: 4.37
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: ecTransform
@@ -80797,15 +80678,15 @@ PrefabInstance:
       objectReference: {fileID: 657595441}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: stepsPerSecond
-      value: 7.92
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoDropTime
-      value: 0.1
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoPickupTime
-      value: 3.12
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: taskTargets.Array.size
@@ -84602,7 +84483,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
-      value: 0.25
+      value: 4.37
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: ecTransform
@@ -84610,15 +84491,15 @@ PrefabInstance:
       objectReference: {fileID: 657595441}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: stepsPerSecond
-      value: 7.92
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoDropTime
-      value: 0.1
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoPickupTime
-      value: 3.12
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: taskTargets.Array.size
@@ -84974,11 +84855,6 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 7532437254635136482, guid: c769b682cc1beaf4e82cfb7651fca607, type: 3}
   m_PrefabInstance: {fileID: 1104680496}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1105096667 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-  m_PrefabInstance: {fileID: 703101896}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1105496207
 PrefabInstance:
@@ -102417,11 +102293,6 @@ MonoBehaviour:
   walkable: 1
   isHarvestSpot: 0
   hasPlant: 0
---- !u!4 &1343290691 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-  m_PrefabInstance: {fileID: 1932724049}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1343414730 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3088325924385318655, guid: b3c3d612d1504e74ab505c372e461148, type: 3}
@@ -110617,7 +110488,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
-      value: 0.25
+      value: 4.37
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: ecTransform
@@ -110625,15 +110496,15 @@ PrefabInstance:
       objectReference: {fileID: 657595441}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: stepsPerSecond
-      value: 7.92
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoDropTime
-      value: 0.1
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoPickupTime
-      value: 3.12
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: taskTargets.Array.size
@@ -117223,11 +117094,6 @@ MonoBehaviour:
   walkable: 0
   isHarvestSpot: 0
   hasPlant: 1
---- !u!4 &1511902218 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-  m_PrefabInstance: {fileID: 2113624323}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1512829177
 GameObject:
   m_ObjectHideFlags: 0
@@ -123194,11 +123060,6 @@ MonoBehaviour:
   walkable: 1
   isHarvestSpot: 1
   hasPlant: 0
---- !u!4 &1583813891 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-  m_PrefabInstance: {fileID: 1947511817}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1585020326 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3088325924385318655, guid: b3c3d612d1504e74ab505c372e461148, type: 3}
@@ -124492,11 +124353,6 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 9165600703115801491, guid: b3c3d612d1504e74ab505c372e461148, type: 3}
   m_PrefabInstance: {fileID: 1599595510}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1599705924 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-  m_PrefabInstance: {fileID: 907903900}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1600819091
 PrefabInstance:
@@ -153709,63 +153565,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8585380147040446225, guid: a4b886284d3086f42b6a7f007fa73671, type: 3}
   m_PrefabInstance: {fileID: 2134892033}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &1932724049
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 560189819}
-    m_Modifications:
-    - target: {fileID: 151211277563178877, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_Name
-      value: Charge STATION
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -18.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -10.16
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c25b011fd40bffa409be2828a189f819, type: 3}
 --- !u!1 &1933586594 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3088325924385318655, guid: b3c3d612d1504e74ab505c372e461148, type: 3}
@@ -155022,63 +154821,6 @@ MonoBehaviour:
   walkable: 1
   isHarvestSpot: 1
   hasPlant: 0
---- !u!1001 &1947511817
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 560189819}
-    m_Modifications:
-    - target: {fileID: 151211277563178877, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_Name
-      value: Charge STATION
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -20.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -10.16
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c25b011fd40bffa409be2828a189f819, type: 3}
 --- !u!1 &1948120030 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8585380147040446225, guid: a4b886284d3086f42b6a7f007fa73671, type: 3}
@@ -169770,63 +169512,6 @@ MonoBehaviour:
   walkable: 0
   isHarvestSpot: 0
   hasPlant: 1
---- !u!1001 &2113624323
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 560189819}
-    m_Modifications:
-    - target: {fileID: 151211277563178877, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_Name
-      value: Charge STATION
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -19.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -10.16
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 671851596105119175, guid: c25b011fd40bffa409be2828a189f819, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: c25b011fd40bffa409be2828a189f819, type: 3}
 --- !u!1 &2113662036 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 3088325924385318655, guid: b3c3d612d1504e74ab505c372e461148, type: 3}
@@ -170648,7 +170333,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: moveSpeed
-      value: 0.25
+      value: 4.37
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: ecTransform
@@ -170656,15 +170341,15 @@ PrefabInstance:
       objectReference: {fileID: 657595441}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: stepsPerSecond
-      value: 7.92
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoDropTime
-      value: 0.1
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: perTomatoPickupTime
-      value: 3.12
+      value: 0.01
       objectReference: {fileID: 0}
     - target: {fileID: 5931764412461915752, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: taskTargets.Array.size

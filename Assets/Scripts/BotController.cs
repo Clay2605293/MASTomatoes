@@ -47,6 +47,10 @@ public class BotController : MonoBehaviour
     public float perTomatoDropTime = 0.1f;
     public float dockWaitSeconds = 2f;
 
+    [Header("Animation")]
+    private Animator animator;
+    public float fixedYPosition = 1.71f;     // Fixed Y position for bot
+
     // ---------------- CAMPOS PRIVADOS ----------------
 
     private GridManager grid;
@@ -129,9 +133,22 @@ public class BotController : MonoBehaviour
         grid = GridManager.Instance;
         botManager = BotManager.Instance;
 
+        // Get animator from child GameObject
+        animator = GetComponentInChildren<Animator>();
+        if (animator == null)
+        {
+            Debug.LogWarning($"{name}: No Animator found in children!");
+        }
+
         // posición inicial
         CurrentGridPos = grid.WorldToGrid(transform.position);
         transform.position = grid.GridToWorld(CurrentGridPos);
+        
+        // Fix Y position
+        Vector3 pos = transform.position;
+        pos.y = fixedYPosition;
+        transform.position = pos;
+        
         homeGridPos = CurrentGridPos;
 
         worldFrom = transform.position;
@@ -144,6 +161,9 @@ public class BotController : MonoBehaviour
             dsGridPos = grid.WorldToGrid(dockingStationTransform.position);
         if (ecTransform != null)
             ecGridPos = grid.WorldToGrid(ecTransform.position);
+
+        // Start with idle animation (State = 0)
+        SetAnimationState(0);
 
         if (useInspectorTasks)
         {
@@ -168,6 +188,12 @@ public class BotController : MonoBehaviour
             stepProgress += delta;
             float t = Mathf.Clamp01(stepProgress);
             transform.position = Vector3.Lerp(worldFrom, worldTo, t);
+            
+            // Fix Y position during movement
+            Vector3 pos = transform.position;
+            pos.y = fixedYPosition;
+            transform.position = pos;
+            
             return;
         }
 
@@ -206,6 +232,16 @@ public class BotController : MonoBehaviour
         MoveAlongPath();
     }
 
+    // ---------------- ANIMATION CONTROL ----------------
+
+    private void SetAnimationState(int stateValue)
+    {
+        if (animator != null)
+        {
+            animator.SetInteger("State", stateValue);
+        }
+    }
+
     // ---------------- MOVIMIENTO ENTRE TILES ----------------
 
     private void MoveAlongPath()
@@ -236,6 +272,19 @@ public class BotController : MonoBehaviour
         worldFrom = grid.GridToWorld(CurrentGridPos);
         CurrentGridPos = targetGridPos;
         worldTo = grid.GridToWorld(CurrentGridPos);
+
+        // Update rotation to face movement direction
+        Vector3 direction = worldTo - worldFrom;
+        if (direction.sqrMagnitude > 0.01f)
+        {
+            direction.y = 0; // Keep rotation only on XZ plane
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            transform.rotation = targetRotation;
+        }
+
+        // Fix Y position
+        worldFrom.y = fixedYPosition;
+        worldTo.y = fixedYPosition;
 
         stepProgress = 0f;
         currentPathIndex++;
@@ -504,6 +553,9 @@ public class BotController : MonoBehaviour
         currentTask = null;
 
         taskQueue.Clear();
+        
+        // Start running animation when tasks are assigned
+        SetAnimationState(1);
     }
 
     // ---------------- CORRUTINAS ----------------
@@ -654,9 +706,6 @@ public class BotController : MonoBehaviour
         }
     }
 
-
-
-
     private IEnumerator UnloadTomatoes()
     {
         if (carriedTomatoes <= 0)
@@ -668,6 +717,9 @@ public class BotController : MonoBehaviour
 
         state = BotState.Unloading;
         isBusy = true;
+        
+        // Set animation to idle while unloading
+        SetAnimationState(0);
 
         int toDrop = carriedTomatoes;
         for (int i = 0; i < toDrop; i++)
@@ -684,6 +736,8 @@ public class BotController : MonoBehaviour
             (blockedTasks != null && blockedTasks.Count > 0))
         {
             state = BotState.Harvesting;
+            // Set animation back to running when going back to harvest
+            SetAnimationState(1);
             TryNextTask();
         }
         else
