@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Threading;
 
 public class BotController : MonoBehaviour
 {
@@ -130,6 +131,7 @@ public class BotController : MonoBehaviour
 
     private void Start()
     {
+        Thread.Sleep(500);
         grid = GridManager.Instance;
         botManager = BotManager.Instance;
 
@@ -162,8 +164,8 @@ public class BotController : MonoBehaviour
         if (ecTransform != null)
             ecGridPos = grid.WorldToGrid(ecTransform.position);
 
-        // Start with idle animation (State = 0)
-        SetAnimationState(0);
+        // Start with idle animation
+        SetAnimationState(1);
 
         if (useInspectorTasks)
         {
@@ -555,7 +557,6 @@ public class BotController : MonoBehaviour
         taskQueue.Clear();
         
         // Start running animation when tasks are assigned
-        SetAnimationState(1);
     }
 
     // ---------------- CORRUTINAS ----------------
@@ -564,7 +565,10 @@ public class BotController : MonoBehaviour
     {
         state = BotState.WaitingAtDS_Initial;
         isBusy = true;
+        SetAnimationState(0);
         yield return new WaitForSeconds(dockWaitSeconds);
+        SetAnimationState(1);
+        yield return new WaitForSeconds(0.958f);
         isBusy = false;
 
         botManager.ReleaseDocking(this);
@@ -737,7 +741,9 @@ public class BotController : MonoBehaviour
         {
             state = BotState.Harvesting;
             // Set animation back to running when going back to harvest
+
             SetAnimationState(1);
+            yield return new WaitForSeconds(0.958f);
             TryNextTask();
         }
         else
