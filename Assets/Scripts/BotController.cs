@@ -64,6 +64,10 @@ public class BotController : MonoBehaviour
     private float endCollectionTime = 0f;
     private bool statsReported = false;
 
+    // Tiempo total de ejecución del bot (desde Start hasta IdleFinished)
+    private float botStartTime = 0f;
+    public float TotalExecutionTime { get; private set; } = 0f;
+
     // --- METRICAS POR BOT (expuestas)
     [Header("Stats por Bot")]
     public int tilesMoved = 0;
@@ -147,6 +151,9 @@ public class BotController : MonoBehaviour
         stepProgress = 1f;
 
         botManager.RegisterBot(this, CurrentGridPos);
+
+        // Iniciar el timer de tiempo total de ejecución
+        botStartTime = Time.time;
 
         if (dockingStationTransform != null)
             dsGridPos = grid.WorldToGrid(dockingStationTransform.position);
@@ -277,6 +284,10 @@ public class BotController : MonoBehaviour
 
             case BotState.ReturningHome:
                 state = BotState.IdleFinished;
+
+                // Calcular tiempo total de ejecución
+                TotalExecutionTime = Time.time - botStartTime;
+                Debug.Log($"[Stats] Bot '{name}' completó todas sus tareas en {TotalExecutionTime:F2} segundos.");
 
                 // Reportar estadísticas finales por bot al BotManager
                 if (BotManager.Instance != null)
