@@ -14,6 +14,9 @@ public class TomatoFieldManager : MonoBehaviour
 
         // Tomates visuales instanciados en la planta
         public List<GameObject> tomatoVisuals = new List<GameObject>();
+
+        // Estado de enfermedad de cada tomate (paralelo a tomatoVisuals)
+        public List<bool> diseasedTomatoes = new List<bool>();
     }
 
     [Header("Tareas de cosecha")]
@@ -26,6 +29,11 @@ public class TomatoFieldManager : MonoBehaviour
     public GameObject tomatoPrefab;       // tu esfera/bolita de tomate
     public float tomatoHeightStep = 0.15f; // separación en altura entre tomates
     public float tomatoRadiusOffset = 0.15f; // pequeño offset random en X/Z
+
+    [Header("Tomates enfermos")]
+    [Range(0f, 1f)]
+    public float diseaseProbability = 0.20f; // 20% de probabilidad de enfermedad
+    public GameObject sickTomatoPrefab;      // prefab para tomates enfermos
 
     private void Awake()
     {
@@ -130,6 +138,10 @@ public class TomatoFieldManager : MonoBehaviour
 
         for (int i = 0; i < task.tomatoes; i++)
         {
+            // Determinar si este tomate está enfermo
+            bool isSick = Random.value < diseaseProbability;
+            task.diseasedTomatoes.Add(isSick);
+
             // Pequeño random en X/Z para que no queden perfectamente alineados
             float offsetX = Random.Range(-tomatoRadiusOffset, tomatoRadiusOffset);
             float offsetZ = Random.Range(-tomatoRadiusOffset, tomatoRadiusOffset);
@@ -137,7 +149,10 @@ public class TomatoFieldManager : MonoBehaviour
 
             Vector3 spawnPos = basePos + new Vector3(offsetX, offsetY, offsetZ);
 
-            GameObject go = Instantiate(tomatoPrefab, spawnPos, Quaternion.identity, transform);
+            // Seleccionar prefab según estado de salud
+            GameObject prefabToUse = isSick && sickTomatoPrefab != null ? sickTomatoPrefab : tomatoPrefab;
+            GameObject go = Instantiate(prefabToUse, spawnPos, Quaternion.identity, transform);
+
             task.tomatoVisuals.Add(go);
         }
     }
@@ -146,21 +161,39 @@ public class TomatoFieldManager : MonoBehaviour
     /// Consume visualmente 1 tomate de la tarea dada.
     /// También decrementa el contador lógico de tomates.
     /// </summary>
-    public void ConsumeTomato(TomatoTask task)
+    /// <summary>
+    /// Consume visualmente 1 tomate de la tarea dada.
+    /// También decrementa el contador lógico de tomates.
+    /// Retorna true si el tomate consumido estaba enfermo.
+    /// </summary>
+    public bool ConsumeTomato(TomatoTask task)
     {
-        if (task == null) return;
-        if (task.tomatoes <= 0) return;
+        if (task == null) return false;
+        if (task.tomatoes <= 0) return false;
 
         task.tomatoes--;
 
+        bool wasSick = false;
+
+        // Eliminar estado de enfermedad del último tomate
+        if (task.diseasedTomatoes != null && task.diseasedTomatoes.Count > 0)
+        {
+            int idx = task.diseasedTomatoes.Count - 1;
+            wasSick = task.diseasedTomatoes[idx];
+            task.diseasedTomatoes.RemoveAt(idx);
+        }
+
+        // Eliminar el visual del último tomate
         if (task.tomatoVisuals != null && task.tomatoVisuals.Count > 0)
         {
-            int idx = task.tomatoVisuals.Count - 1; // quitamos el último
+            int idx = task.tomatoVisuals.Count - 1;
             GameObject go = task.tomatoVisuals[idx];
             task.tomatoVisuals.RemoveAt(idx);
 
             if (go != null)
                 Destroy(go);
         }
+
+        return wasSick;
     }
 }
