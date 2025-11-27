@@ -69,6 +69,18 @@ public class BotController : MonoBehaviour
     private float endCollectionTime = 0f;
     private bool statsReported = false;
 
+    // Tiempo total de ejecución del bot (desde Start hasta IdleFinished)
+    private float botStartTime = 0f;
+    public float TotalExecutionTime { get; private set; } = 0f;
+
+    // --- METRICAS POR BOT (expuestas)
+    [Header("Stats por Bot")]
+    public int tilesMoved = 0;
+    public int totalReplans = 0;
+    public int tomatoesPicked = 0;
+    public int tomatoesDelivered = 0;
+    public int completedTasks = 0;
+
     private List<Vector2Int> currentPath = new();
     private int currentPathIndex = 0;
 
@@ -158,6 +170,9 @@ public class BotController : MonoBehaviour
         stepProgress = 1f;
 
         botManager.RegisterBot(this, CurrentGridPos);
+
+        // Iniciar el timer de tiempo total de ejecución
+        botStartTime = Time.time;
 
         if (dockingStationTransform != null)
             dsGridPos = grid.WorldToGrid(dockingStationTransform.position);
@@ -290,6 +305,10 @@ public class BotController : MonoBehaviour
 
         stepProgress = 0f;
         currentPathIndex++;
+
+        // Métrica: tile recorrido
+        tilesMoved++;
+        BotManager.Instance.RegisterTileMoved();
     }
 
     private void OnArrivedToDestination()
@@ -316,6 +335,16 @@ public class BotController : MonoBehaviour
 
             case BotState.ReturningHome:
                 state = BotState.IdleFinished;
+
+                // Calcular tiempo total de ejecución
+                TotalExecutionTime = Time.time - botStartTime;
+                Debug.Log($"[Stats] Bot '{name}' completó todas sus tareas en {TotalExecutionTime:F2} segundos.");
+
+                // Reportar estadísticas finales por bot al BotManager
+                if (BotManager.Instance != null)
+                {
+                    BotManager.Instance.RegisterBotFinalStats(this);
+                }
                 break;
 
             case BotState.GoingToEC:
@@ -544,6 +573,8 @@ public class BotController : MonoBehaviour
 
     public void ForceReplan()
     {
+        totalReplans++;
+        BotManager.Instance.RegisterReplan();
         forceReplan = true;
     }
 
@@ -637,6 +668,8 @@ public class BotController : MonoBehaviour
 
             // ---- Lógica de estadísticas de recolección ----
             totalTomatoesCollected++;
+            tomatoesPicked++;
+            BotManager.Instance.RegisterTomatoPicked();
 
             if (!timingStarted)
             {
@@ -690,6 +723,10 @@ public class BotController : MonoBehaviour
         // Llegamos aquí porque se acabaron los tomates de esta planta
         isBusy = false;
 
+        // Contabilizar tarea de cosecha completada (planta agotada)
+        completedTasks++;
+        BotManager.Instance.RegisterTaskCompleted();
+
         // Ya no la re-encolamos porque tomatoes == 0
         currentTask = null;
 
@@ -731,9 +768,17 @@ public class BotController : MonoBehaviour
             yield return new WaitForSeconds(perTomatoDropTime);
             carriedTomatoes--;
             // aquí luego ponemos bolita visual en EC
+
+            tomatoesDelivered++;
+            BotManager.Instance.RegisterTomatoDelivered();
         }
 
         isBusy = false;
+
+        // Contabilizar la entrega como una tarea completada (por entrega)
+        completedTasks++;
+        BotManager.Instance.RegisterTaskCompleted();
+
         botManager.ReleaseEC(this);
 
         if ((pendingTasks != null && pendingTasks.Count > 0) ||

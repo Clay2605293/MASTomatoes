@@ -20,6 +20,110 @@ public class BotManager : MonoBehaviour
     private float minTimeForStats = float.MaxValue;
     private float maxTimeForStats = 0f;
 
+    // Totales acumulados en tiempo de ejecución (actualizados por los bots)
+    [Header("Totals (acumulados en runtime)")]
+    public int totalTilesMoved = 0;
+    public int totalReplans = 0;
+    public int totalTomatoesPicked = 0;
+    public int totalTomatoesDelivered = 0;
+    public int totalTasksCompleted = 0;
+
+    public void RegisterTileMoved() { totalTilesMoved++; }
+    public void RegisterReplan() { totalReplans++; }
+    public void RegisterTomatoPicked() { totalTomatoesPicked++; }
+    public void RegisterTomatoDelivered() { totalTomatoesDelivered++; }
+    public void RegisterTaskCompleted() { totalTasksCompleted++; }
+
+    // ----------------- Registro por bot (para reporte final) -----------------
+    private class BotStatsEntry
+    {
+        public string name;
+        public int tilesMoved;
+        public int replans;
+        public int tomatoesPicked;
+        public int tomatoesDelivered;
+        public int tasksCompleted;
+        public float totalTime; // tiempo total de ejecución del bot
+    }
+
+    private List<BotStatsEntry> botStatsEntries = new();
+
+    public void RegisterBotFinalStats(BotController bot)
+    {
+        if (bot == null) return;
+
+        var entry = new BotStatsEntry()
+        {
+            name = bot.name,
+            tilesMoved = bot.tilesMoved,
+            replans = bot.totalReplans,
+            tomatoesPicked = bot.tomatoesPicked,
+            tomatoesDelivered = bot.tomatoesDelivered,
+            tasksCompleted = bot.completedTasks,
+            totalTime = bot.TotalExecutionTime
+        };
+
+        botStatsEntries.Add(entry);
+
+        // Log individual
+        Debug.Log($"[Stats][Bot] {entry.name} -> tiles:{entry.tilesMoved} | replans:{entry.replans} | picked:{entry.tomatoesPicked} | delivered:{entry.tomatoesDelivered} | tasks:{entry.tasksCompleted} | tiempo:{entry.totalTime:F2}s");
+
+        // Si ya recibimos todos los bots esperados, imprimimos resumen final
+        if (botStatsEntries.Count == expectedBotsForStats)
+        {
+            PrintFinalAggregatedStats();
+        }
+    }
+
+    private void PrintFinalAggregatedStats()
+    {
+        Debug.Log($"------------------------------");
+        Debug.Log($"[Stats] RESULTADOS FINALES (por bot)");
+        Debug.Log($"------------------------------");
+
+        // Detalle por bot
+        foreach (var e in botStatsEntries)
+        {
+            Debug.Log($"[Stats][Bot] {e.name}: tiles={e.tilesMoved}, replans={e.replans}, picked={e.tomatoesPicked}, delivered={e.tomatoesDelivered}, tasks={e.tasksCompleted}, tiempo={e.totalTime:F2}s");
+        }
+
+        // Totales (ya acumulados en tiempo de ejecución)
+        Debug.Log($"------------------------------");
+        Debug.Log($"[Stats] ----- MÉTRICAS GLOBALES -----");
+        Debug.Log($"[Stats] Tiles recorridos totales: {totalTilesMoved}");
+        Debug.Log($"[Stats] Replanificaciones totales: {totalReplans}");
+        Debug.Log($"[Stats] Tomates recolectados: {totalTomatoesPicked}");
+        Debug.Log($"[Stats] Tomates entregados: {totalTomatoesDelivered}");
+        Debug.Log($"[Stats] Tareas completadas totales: {totalTasksCompleted}");
+
+        // Promedios por bot (usar expectedBotsForStats para división segura)
+        float denom = Mathf.Max(1, expectedBotsForStats);
+        Debug.Log($"[Stats] ----- PROMEDIOS (por bot) -----");
+        Debug.Log($"[Stats] Promedio de tiles recorridos: {((float)totalTilesMoved) / denom:F2}");
+        Debug.Log($"[Stats] Promedio de replanificaciones: {((float)totalReplans) / denom:F2}");
+        Debug.Log($"[Stats] Promedio de tomates recolectados: {((float)totalTomatoesPicked) / denom:F2}");
+        Debug.Log($"[Stats] Promedio de tomates entregados: {((float)totalTomatoesDelivered) / denom:F2}");
+        Debug.Log($"[Stats] Promedio de tareas completadas: {((float)totalTasksCompleted) / denom:F2}");
+
+        // Estadísticas de tiempo total
+        float sumTime = 0f;
+        float minTime = float.MaxValue;
+        float maxTime = 0f;
+        foreach (var e in botStatsEntries)
+        {
+            sumTime += e.totalTime;
+            if (e.totalTime < minTime) minTime = e.totalTime;
+            if (e.totalTime > maxTime) maxTime = e.totalTime;
+        }
+        float avgTime = sumTime / denom;
+
+        Debug.Log($"[Stats] ----- TIEMPOS DE EJECUCIÓN -----");
+        Debug.Log($"[Stats] Tiempo total (suma de todos los bots): {sumTime:F2} segundos");
+        Debug.Log($"[Stats] Tiempo promedio por bot: {avgTime:F2} segundos");
+        Debug.Log($"[Stats] Tiempo mínimo: {minTime:F2} segundos");
+        Debug.Log($"[Stats] Tiempo máximo: {maxTime:F2} segundos");
+    }
+
     // ----------------- DOCKING STATION (DS) -----------------
 
     [Header("Docking Station Queue")]
@@ -363,6 +467,8 @@ public class BotManager : MonoBehaviour
             float average = sumTimesForStats / expectedBotsForStats;
             Debug.Log($"[Stats] Tiempo promedio de {expectedBotsForStats} bots para recolectar los tomates objetivo: {average:F2} segundos.");
             Debug.Log($"[Stats] Min: {minTimeForStats:F2} s, Max: {maxTimeForStats:F2} s");
+            // Nota: El resumen global más detallado se imprime cuando se reciben
+            // los registros finales de cada bot (RegisterBotFinalStats).
         }
     }
 }
