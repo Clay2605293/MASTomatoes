@@ -164,7 +164,6 @@ public class BotController : MonoBehaviour
         if (ecTransform != null)
             ecGridPos = grid.WorldToGrid(ecTransform.position);
 
-        // Start with idle animation
         SetAnimationState(1);
 
         if (useInspectorTasks)
