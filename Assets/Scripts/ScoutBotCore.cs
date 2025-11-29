@@ -221,8 +221,10 @@ public class ScoutBotCore : MonoBehaviour
     {
         // Si está ocupado (escaneando, esperando, etc), no moverse
         if (isBusy)
+        {
             SetAnimationState(0);
             return;
+        }
         
         // Animación entre tiles
         if (stepProgress < 1f)
