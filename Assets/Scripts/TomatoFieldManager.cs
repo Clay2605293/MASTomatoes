@@ -16,7 +16,14 @@ public class TomatoFieldManager : MonoBehaviour
         public List<GameObject> tomatoVisuals = new List<GameObject>();
 
         // Estado de enfermedad de cada tomate (paralelo a tomatoVisuals)
+        // Aquí vamos a guardar la "verdad" médica (si ese tomate viene de planta realmente enferma)
         public List<bool> diseasedTomatoes = new List<bool>();
+
+        // NUEVO: marca si la planta "parece sospechosa" al sistema de diagnóstico inicial
+        public bool appearsSuspicious;
+
+        // NUEVO: marca si la planta está realmente enferma (ground truth)
+        public bool isTrulySick;
     }
 
     [Header("Tareas de cosecha")]
@@ -26,14 +33,23 @@ public class TomatoFieldManager : MonoBehaviour
     private bool tasksBuilt = false;
 
     [Header("Visual de tomates")]
-    public GameObject tomatoPrefab;       // tu esfera/bolita de tomate
+    public GameObject tomatoPrefab;        // tu esfera/bolita de tomate (normal)
     public float tomatoHeightStep = 0.15f; // separación en altura entre tomates
     public float tomatoRadiusOffset = 0.15f; // pequeño offset random en X/Z
 
-    [Header("Tomates enfermos")]
+    [Header("Tomates enfermos (visual)")]
     [Range(0f, 1f)]
-    public float diseaseProbability = 0.20f; // 20% de probabilidad de enfermedad
-    public GameObject sickTomatoPrefab;      // prefab para tomates enfermos
+    public float diseaseProbability = 0.20f; // ya no la usaremos como antes, pero la dejamos por si luego la necesitas
+    public GameObject sickTomatoPrefab;      // prefab para tomates "marcados" (verde/bandera)
+
+    [Header("Probabilidades de sospecha / enfermedad real")]
+    [Tooltip("Probabilidad de que una planta PAREZCA sospechosa (5% = 0.05)")]
+    [Range(0f, 1f)]
+    public float suspiciousPlantProbability = 0.05f;
+
+    [Tooltip("Dentro de las sospechosas, probabilidad de que sí estén realmente enfermas (80% = 0.8)")]
+    [Range(0f, 1f)]
+    public float trulySickGivenSuspiciousProbability = 0.8f;
 
     private void Awake()
     {
@@ -65,6 +81,9 @@ public class TomatoFieldManager : MonoBehaviour
 
         if (grid == null)
             grid = GridManager.Instance;
+
+        int suspiciousCount = 0;
+        int trulySickCount = 0;
 
         // Recorremos todos los tiles del grid
         foreach (var kvp in grid.AllTiles)
@@ -113,8 +132,27 @@ public class TomatoFieldManager : MonoBehaviour
                 standPos = pos,
                 plantPos = plantPos.Value,
                 tomatoes = Random.Range(1, 6),
-                tomatoVisuals = new List<GameObject>()
+                tomatoVisuals = new List<GameObject>(),
+                diseasedTomatoes = new List<bool>()
             };
+
+            // NUEVO: determinar sospecha y enfermedad real a nivel planta
+            float suspicionRoll = Random.value;
+            if (suspicionRoll < suspiciousPlantProbability)
+            {
+                task.appearsSuspicious = true;
+                suspiciousCount++;
+
+                // Dentro de las sospechosas, 80% realmente enfermas (por defecto)
+                float truthRoll = Random.value;
+                task.isTrulySick = truthRoll < trulySickGivenSuspiciousProbability;
+                if (task.isTrulySick) trulySickCount++;
+            }
+            else
+            {
+                task.appearsSuspicious = false;
+                task.isTrulySick = false;
+            }
 
             // Instanciar tomates visuales sobre la planta
             SpawnTomatoesForTask(task);
@@ -122,7 +160,10 @@ public class TomatoFieldManager : MonoBehaviour
             allTasks.Add(task);
         }
 
-        Debug.Log($"TomatoFieldManager: generadas {allTasks.Count} tareas de cosecha.");
+        Debug.Log(
+            $"TomatoFieldManager: generadas {allTasks.Count} tareas de cosecha. " +
+            $"Sospechosas={suspiciousCount}, Realmente enfermas={trulySickCount}."
+        );
     }
 
     private void SpawnTomatoesForTask(TomatoTask task)
@@ -138,9 +179,19 @@ public class TomatoFieldManager : MonoBehaviour
 
         for (int i = 0; i < task.tomatoes; i++)
         {
-            // Determinar si este tomate está enfermo
-            bool isSick = Random.value < diseaseProbability;
-            task.diseasedTomatoes.Add(isSick);
+            // VERDAD MÉDICA:
+            //   - Si la planta es realmente enferma, este tomate cuenta como enfermo para la lógica médica.
+            //   - Si no, es sano.
+            bool isMedicallySick = task.isTrulySick;
+
+            // APARIENCIA VISUAL:
+            //   - Si la planta aparece sospechosa, queremos usar la "bandera verde" (sickTomatoPrefab)
+            //     para que destaque en el invernadero.
+            //   - Esto es independiente de si realmente está enferma o no (falsos positivos incluidos).
+            bool useGreenPrefab = task.appearsSuspicious;
+
+            // Guardamos la verdad médica en la lista paralela
+            task.diseasedTomatoes.Add(isMedicallySick);
 
             // Pequeño random en X/Z para que no queden perfectamente alineados
             float offsetX = Random.Range(-tomatoRadiusOffset, tomatoRadiusOffset);
@@ -149,10 +200,15 @@ public class TomatoFieldManager : MonoBehaviour
 
             Vector3 spawnPos = basePos + new Vector3(offsetX, offsetY, offsetZ);
 
-            // Seleccionar prefab según estado de salud
-            GameObject prefabToUse = isSick && sickTomatoPrefab != null ? sickTomatoPrefab : tomatoPrefab;
-            GameObject go = Instantiate(prefabToUse, spawnPos, Quaternion.identity, transform);
+            // Seleccionar prefab según apariencia (sospechosa -> verde)
+            GameObject prefabToUse = tomatoPrefab;
 
+            if (useGreenPrefab && sickTomatoPrefab != null)
+            {
+                prefabToUse = sickTomatoPrefab;
+            }
+
+            GameObject go = Instantiate(prefabToUse, spawnPos, Quaternion.identity, transform);
             task.tomatoVisuals.Add(go);
         }
     }
@@ -160,11 +216,7 @@ public class TomatoFieldManager : MonoBehaviour
     /// <summary>
     /// Consume visualmente 1 tomate de la tarea dada.
     /// También decrementa el contador lógico de tomates.
-    /// </summary>
-    /// <summary>
-    /// Consume visualmente 1 tomate de la tarea dada.
-    /// También decrementa el contador lógico de tomates.
-    /// Retorna true si el tomate consumido estaba enfermo.
+    /// Retorna true si el tomate consumido era médicamente enfermo.
     /// </summary>
     public bool ConsumeTomato(TomatoTask task)
     {
@@ -175,7 +227,7 @@ public class TomatoFieldManager : MonoBehaviour
 
         bool wasSick = false;
 
-        // Eliminar estado de enfermedad del último tomate
+        // Eliminar estado de enfermedad del último tomate (verdad médica)
         if (task.diseasedTomatoes != null && task.diseasedTomatoes.Count > 0)
         {
             int idx = task.diseasedTomatoes.Count - 1;

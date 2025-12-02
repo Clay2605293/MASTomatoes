@@ -51,7 +51,6 @@ public class GridManager : MonoBehaviour
                 tiles.Add(gridPos, tile);
             }
         }
-
     }
 
     // -------- API básica --------
@@ -120,7 +119,7 @@ public class GridManager : MonoBehaviour
     // -------- Pathfinding simple (BFS) --------
 
     // requester se usa para no considerar al propio bot como obstáculo
-    public List<Vector2Int> FindPath(Vector2Int start, Vector2Int goal, BotController requester = null)
+    public List<Vector2Int> FindPath(Vector2Int start, Vector2Int goal, BaseGridBot requester = null)
     {
         Queue<Vector2Int> frontier = new Queue<Vector2Int>();
         frontier.Enqueue(start);
@@ -151,7 +150,7 @@ public class GridManager : MonoBehaviour
                 if (!IsWalkable(next)) continue;             // cama de cultivo / obstáculo dinamico
 
                 // Evitar paredes vivas: otros bots
-                BotController otherBot = null;
+                BaseGridBot otherBot = null;
                 if (BotManager.Instance != null)
                 {
                     otherBot = BotManager.Instance.GetBotAt(next);

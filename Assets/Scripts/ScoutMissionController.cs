@@ -1,10 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 
 /// <summary>
-/// Distributes harvest tasks among all available ScoutBots.
-/// Slices the map into vertical strips based on X coordinates.
+/// Distributes inspection routes among all available ScoutBotBrain agents.
+/// Slices the map into vertical strips based on X coordinates (same idea as antes).
+/// Cada scout recibe una lista de tiles (gridPos) frente a plantas que debe inspeccionar.
 /// </summary>
 public class ScoutMissionController : MonoBehaviour
 {
@@ -24,6 +24,7 @@ public class ScoutMissionController : MonoBehaviour
 
     private System.Collections.IEnumerator DistributeRoutine()
     {
+        // Esperamos un poco para que GridManager, TomatoFieldManager y bots estén listos
         yield return new WaitForSeconds(startDelay);
         DistributeTasks();
     }
@@ -31,20 +32,20 @@ public class ScoutMissionController : MonoBehaviour
     [ContextMenu("Distribute Tasks")]
     public void DistributeTasks()
     {
-        // 1. Find all Scouts
-        ScoutBotCore[] scouts = FindObjectsOfType<ScoutBotCore>();
+        // 1. Buscar todos los nuevos Scouts (ScoutBotBrain)
+        ScoutBotBrain[] scouts = FindObjectsOfType<ScoutBotBrain>();
         if (scouts.Length == 0)
         {
-            Debug.LogWarning("[MissionController] No ScoutBots found.");
+            Debug.LogWarning("[MissionController] No ScoutBotBrain found.");
             return;
         }
 
-        // Sort scouts by name to ensure deterministic assignment (Scout 1, Scout 2, etc.)
+        // Ordenar por nombre para tener asignación determinista (Scout 1, Scout 2, etc.)
         System.Array.Sort(scouts, (a, b) => string.Compare(a.name, b.name));
 
         Debug.Log($"[MissionController] Found {scouts.Length} scouts. Preparing distribution...");
 
-        // 2. Find all Harvest Spots
+        // 2. Encontrar todos los Harvest Spots (tiles frente a plantas)
         TileInfo[] allTiles = FindObjectsOfType<TileInfo>();
         List<Vector2Int> harvestSpots = new List<Vector2Int>();
 
@@ -61,10 +62,11 @@ public class ScoutMissionController : MonoBehaviour
             Debug.LogWarning("[MissionController] No harvest spots found.");
             return;
         }
-        // 3. Sort spots by X (Vertical Strips strategy)
-        // This ensures Scout 1 gets the left strip, Scout 2 the next, etc.
-        // We sort by X first, then Y for stability
-        harvestSpots.Sort((a, b) => {
+
+        // 3. Ordenar spots por X (estrategia de franjas verticales)
+        // De esta forma, Scout 1 inspecciona la franja izquierda, Scout 2 la siguiente, etc.
+        harvestSpots.Sort((a, b) =>
+        {
             int xComp = a.x.CompareTo(b.x);
             if (xComp != 0) return xComp;
             return a.y.CompareTo(b.y);
@@ -72,30 +74,32 @@ public class ScoutMissionController : MonoBehaviour
 
         Debug.Log($"[MissionController] Found {harvestSpots.Count} harvest spots. Distributing...");
 
-        // 4. Split and Assign
+        // 4. Dividir y asignar de forma equitativa
         int totalSpots = harvestSpots.Count;
-        int spotsPerScout = totalSpots / scouts.Length;
-        int remainder = totalSpots % scouts.Length;
+        int numScouts = scouts.Length;
+
+        int baseCount = totalSpots / numScouts;
+        int remainder = totalSpots % numScouts;
         int currentIndex = 0;
 
-        for (int i = 0; i < scouts.Length; i++)
+        for (int i = 0; i < numScouts; i++)
         {
-            // Distribute remainder one by one to the first few scouts
-            int count = spotsPerScout + (i < remainder ? 1 : 0);
-            
-            if (count > 0)
-            {
-                List<Vector2Int> assignedSpots = harvestSpots.GetRange(currentIndex, count);
-                currentIndex += count;
+            int count = baseCount + (i < remainder ? 1 : 0);
 
-                // Assign to scout and tell it to optimize the path
-                Debug.Log($"[MissionController] Assigning {assignedSpots.Count} spots to {scouts[i].name} (Range X: {assignedSpots[0].x} to {assignedSpots[assignedSpots.Count-1].x})");
-                scouts[i].AsignarMision(assignedSpots, optimize: true);
-            }
-            else
+            if (count <= 0)
             {
                 Debug.LogWarning($"[MissionController] Scout {scouts[i].name} got 0 spots (too many scouts?)");
+                scouts[i].AssignRoute(new List<Vector2Int>());
+                continue;
             }
+
+            List<Vector2Int> assignedSpots = harvestSpots.GetRange(currentIndex, count);
+            currentIndex += count;
+
+            Debug.Log($"[MissionController] Assigning {assignedSpots.Count} spots to {scouts[i].name} (Range X: {assignedSpots[0].x} to {assignedSpots[assignedSpots.Count - 1].x})");
+
+            // Asignar la ruta a este scout
+            scouts[i].AssignRoute(assignedSpots);
         }
     }
 }

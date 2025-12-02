@@ -7,7 +7,8 @@ public class BotManager : MonoBehaviour
 
     // ----------------- OCUPACIÓN DE CELDAS -----------------
 
-    private Dictionary<Vector2Int, BotController> occupiedCells = new();
+    // Ahora trabajamos con BaseGridBot para soportar distintos tipos de bots (pickbots, scouts, nurse, etc.)
+    private Dictionary<Vector2Int, BaseGridBot> occupiedCells = new();
     private System.Random rng = new System.Random();
 
     // ----------------- ESTADÍSTICAS GLOBALES DE BOTS -----------------
@@ -28,9 +29,10 @@ public class BotManager : MonoBehaviour
     private Vector2Int[] dockingQueueGridPos;
     private bool dockingQueueBuilt = false;
 
-    private BotController dockingOwner;
-    private Queue<BotController> dockingQueueOrder = new();               // orden FIFO
-    private Dictionary<BotController, int> dockingQueueIndex = new();     // bot -> slot index
+    // Ahora el dueño de la DS puede ser cualquier BaseGridBot
+    private BaseGridBot dockingOwner;
+    private Queue<BaseGridBot> dockingQueueOrder = new();               // orden FIFO
+    private Dictionary<BaseGridBot, int> dockingQueueIndex = new();     // bot -> slot index
 
     // ----------------- ENTREGA DE COSECHA (EC) -----------------
 
@@ -40,9 +42,9 @@ public class BotManager : MonoBehaviour
     private Vector2Int[] ecQueueGridPos;
     private bool ecQueueBuilt = false;
 
-    private BotController ecOwner;
-    private Queue<BotController> ecQueueOrder = new();
-    private Dictionary<BotController, int> ecQueueIndex = new();
+    private BaseGridBot ecOwner;
+    private Queue<BaseGridBot> ecQueueOrder = new();
+    private Dictionary<BaseGridBot, int> ecQueueIndex = new();
 
     // ----------------- UNITY -----------------
 
@@ -107,22 +109,23 @@ public class BotManager : MonoBehaviour
 
     // ----------------- OCUPACIÓN DE CELDAS -----------------
 
-    public void RegisterBot(BotController bot, Vector2Int gridPos)
+    public void RegisterBot(BaseGridBot bot, Vector2Int gridPos)
     {
         occupiedCells[gridPos] = bot;
     }
 
-    public BotController GetBotAt(Vector2Int gridPos)
+    public BaseGridBot GetBotAt(Vector2Int gridPos)
     {
         occupiedCells.TryGetValue(gridPos, out var bot);
         return bot;
     }
 
-    public bool TryMoveWithPriority(BotController bot, Vector2Int from, Vector2Int to)
+    public bool TryMoveWithPriority(BaseGridBot bot, Vector2Int from, Vector2Int to)
     {
         if (from == to) return true;
 
-        if (!occupiedCells.TryGetValue(to, out BotController other) || other == null)
+        // Si la celda destino está libre o contiene null, mover directamente
+        if (!occupiedCells.TryGetValue(to, out BaseGridBot other) || other == null)
         {
             if (occupiedCells.TryGetValue(from, out var current) && current == bot)
             {
@@ -132,6 +135,7 @@ public class BotManager : MonoBehaviour
             return true;
         }
 
+        // Si el otro bot soy yo mismo, no pasa nada
         if (other == bot) return true;
 
         float myCost = bot.RemainingCost;
@@ -159,7 +163,7 @@ public class BotManager : MonoBehaviour
 
     // ----------------- DOCKING STATION (DS) -----------------
 
-    public bool TryClaimDocking(BotController bot)
+    public bool TryClaimDocking(BaseGridBot bot)
     {
         // DS ocupado por otro
         if (dockingOwner != null && dockingOwner != bot)
@@ -186,7 +190,7 @@ public class BotManager : MonoBehaviour
         return true;
     }
 
-    public void ReleaseDocking(BotController bot)
+    public void ReleaseDocking(BaseGridBot bot)
     {
         if (dockingOwner == bot)
         {
@@ -194,7 +198,7 @@ public class BotManager : MonoBehaviour
         }
     }
 
-    public bool TryGetDockingQueueSlot(BotController bot, out Vector2Int queuePos)
+    public bool TryGetDockingQueueSlot(BaseGridBot bot, out Vector2Int queuePos)
     {
         EnsureDockingQueueGridPos();
 
@@ -237,14 +241,14 @@ public class BotManager : MonoBehaviour
         return false;
     }
 
-    public void ReleaseDockingQueueSlot(BotController bot)
+    public void ReleaseDockingQueueSlot(BaseGridBot bot)
     {
         if (!dockingQueueIndex.Remove(bot))
             return;
 
         if (dockingQueueOrder.Count > 0)
         {
-            var tmp = new Queue<BotController>();
+            var tmp = new Queue<BaseGridBot>();
             while (dockingQueueOrder.Count > 0)
             {
                 var b = dockingQueueOrder.Dequeue();
@@ -256,7 +260,7 @@ public class BotManager : MonoBehaviour
 
     // ----------------- EC (ENTREGA DE COSECHA) -----------------
 
-    public bool TryClaimEC(BotController bot)
+    public bool TryClaimEC(BaseGridBot bot)
     {
         if (ecOwner != null && ecOwner != bot)
             return false;
@@ -281,7 +285,7 @@ public class BotManager : MonoBehaviour
         return true;
     }
 
-    public void ReleaseEC(BotController bot)
+    public void ReleaseEC(BaseGridBot bot)
     {
         if (ecOwner == bot)
         {
@@ -289,7 +293,7 @@ public class BotManager : MonoBehaviour
         }
     }
 
-    public bool TryGetECQueueSlot(BotController bot, out Vector2Int queuePos)
+    public bool TryGetECQueueSlot(BaseGridBot bot, out Vector2Int queuePos)
     {
         EnsureECQueueGridPos();
 
@@ -330,14 +334,14 @@ public class BotManager : MonoBehaviour
         return false;
     }
 
-    public void ReleaseECQueueSlot(BotController bot)
+    public void ReleaseECQueueSlot(BaseGridBot bot)
     {
         if (!ecQueueIndex.Remove(bot))
             return;
 
         if (ecQueueOrder.Count > 0)
         {
-            var tmp = new Queue<BotController>();
+            var tmp = new Queue<BaseGridBot>();
             while (ecQueueOrder.Count > 0)
             {
                 var b = ecQueueOrder.Dequeue();

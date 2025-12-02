@@ -1,0 +1,513 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// NurseBot: toma muestras de plantas sospechosas y las lleva a ENFPos para análisis.
+/// Flujo:
+/// 1. Cuando el Orchestrator lo indica, va a DSPos inicial (espera turno).
+/// 2. Recibe lista de TomatoTask sospechosas (AssignTasks).
+/// 3. Para cada tarea:
+///    - Va a standPos de la planta.
+///    - Toma muestra (ConsumeTomato).
+///    - Va a ENFPos y "analiza" (usa isTrulySick).
+/// 4. Cuando termina todas, vuelve a DSPos, reporta y regresa a home.
+/// </summary>
+public class NurseBotBrain : BaseGridBot
+{
+    [Header("Stations")]
+    public Transform dsTransform;     // DSPos (misma docking que los demás)
+    public Transform enfTransform;    // ENFPos (estación de enfermería / laboratorio)
+
+    [Header("Timings")]
+    [Tooltip("Tiempo que tarda en tomar una muestra en la planta.")]
+    public float sampleTime = 0.5f;
+
+    [Tooltip("Tiempo que tarda analizando una muestra en ENFPos.")]
+    public float analysisTime = 1.0f;
+
+    [Header("Movement / Visual")]
+    public float stepsPerSecond = 2f;
+    public float fixedY = 1.71f;
+
+    [Header("Animation")]
+    private Animator animator;
+
+    [Header("Mission State")]
+    public bool MissionComplete { get; private set; }
+
+    // Flag para no arrancar hasta que el Orchestrator lo indique
+    private bool missionStarted = false;
+
+    // Referencias
+    private GridManager grid;
+    private BotManager botManager;
+
+    // Posiciones clave (grid)
+    private Vector2Int dsGridPos;
+    private Vector2Int enfGridPos;
+    private Vector2Int homeGridPos;
+
+    // Lista de tareas asignadas (plantas sospechosas)
+    private List<TomatoFieldManager.TomatoTask> assignedTasks = new();
+    private int currentTaskIndex = 0;
+    private TomatoFieldManager.TomatoTask currentTask = null;
+
+    // Path actual dentro del grid
+    private List<Vector2Int> currentPath = new();
+    private int currentPathIndex = 0;
+
+    // Interpolación entre tiles
+    private Vector3 worldFrom;
+    private Vector3 worldTo;
+    private float stepProgress = 1f; // 1 = ya está en el tile destino
+
+    private bool forceReplan = false;
+    private bool busy = false;
+
+    // Estado interno del NurseBot
+    private enum NurseState
+    {
+        GoingToDS_Initial,
+        WaitingAtDS_Initial,
+        GoingToPlant,
+        SamplingAtPlant,
+        GoingToENF,
+        WaitingAtENF,
+        GoingToDS_Final,
+        WaitingAtDS_Final,
+        ReturningHome,
+        Idle
+    }
+
+    private NurseState state = NurseState.Idle;
+
+    // ----------------- BaseGridBot Required -----------------
+
+    public override float RemainingCost
+    {
+        get
+        {
+            int tasksRemaining = (assignedTasks != null ? assignedTasks.Count - currentTaskIndex : 0);
+            int pathRemaining = (currentPath != null ? currentPath.Count - currentPathIndex : 0);
+            return tasksRemaining * 10 + pathRemaining;
+        }
+    }
+
+    public override void ForceReplan()
+    {
+        forceReplan = true;
+    }
+
+    // ----------------- UNITY -----------------
+
+    private void Start()
+    {
+        MissionComplete = false;
+        missionStarted = false;
+
+        grid = GridManager.Instance;
+        botManager = BotManager.Instance;
+
+        animator = GetComponentInChildren<Animator>();
+        if (animator == null)
+        {
+            Debug.LogWarning($"{name}: NurseBotBrain no encontró Animator en hijos.");
+        }
+
+        // Posición inicial en el mundo -> grid
+        CurrentGridPos = grid.WorldToGrid(transform.position);
+        transform.position = grid.GridToWorld(CurrentGridPos);
+        FixY();
+
+        homeGridPos = CurrentGridPos;
+
+        // Posición de la Docking Station (DSPos)
+        if (dsTransform != null)
+        {
+            dsGridPos = grid.WorldToGrid(dsTransform.position);
+        }
+        else
+        {
+            Debug.LogWarning($"{name}: dsTransform no asignado, usando posición inicial como DS/home.");
+            dsGridPos = homeGridPos;
+        }
+
+        // Posición de ENFPos (laboratorio)
+        if (enfTransform != null)
+        {
+            enfGridPos = grid.WorldToGrid(enfTransform.position);
+        }
+        else
+        {
+            Debug.LogWarning($"{name}: enfTransform no asignado. Usando DS como estación de análisis.");
+            enfGridPos = dsGridPos;
+        }
+
+        // Seguridad: si el home inicial no es walkable, usamos DS como home
+        if (!grid.IsWalkable(homeGridPos))
+        {
+            Debug.LogWarning($"{name}: homeGridPos {homeGridPos} no es walkable. Usando DS como home.");
+            homeGridPos = dsGridPos;
+        }
+
+        // Registrar en BotManager
+        botManager.RegisterBot(this, CurrentGridPos);
+
+        // Inicializar interpolación
+        worldFrom = transform.position;
+        worldTo = transform.position;
+        stepProgress = 1f;
+
+        // Por ahora se queda en Idle hasta que el Orchestrator llame StartMission()
+        state = NurseState.Idle;
+        SetAnimationState(0);
+    }
+
+    private void Update()
+    {
+        // Hasta que el Orchestrator no arranque la misión, el NurseBot no se mueve
+        if (!missionStarted) return;
+
+        if (busy) return;
+
+        // 1) Si estamos a medio paso entre tiles, seguir interpolando
+        if (stepProgress < 1f)
+        {
+            float delta = Time.deltaTime * stepsPerSecond;
+            stepProgress += delta;
+            float t = Mathf.Clamp01(stepProgress);
+            transform.position = Vector3.Lerp(worldFrom, worldTo, t);
+            FixY();
+            return;
+        }
+
+        // 2) Si no estamos a medio paso, avanzar en el path (si hay)
+        MoveAlongPath();
+
+        // 3) Estados que requieren reintentar reclamar DS
+        switch (state)
+        {
+            case NurseState.WaitingAtDS_Initial:
+                TryGoToDSInitial();
+                break;
+
+            case NurseState.WaitingAtDS_Final:
+                TryGoToDSFinal();
+                break;
+        }
+    }
+
+    // ----------------- API pública -----------------
+
+    /// <summary>
+    /// Orchestrator llama esto para asignar las tareas sospechosas.
+    /// </summary>
+    public void AssignTasks(List<TomatoFieldManager.TomatoTask> tasks)
+    {
+        assignedTasks = tasks ?? new List<TomatoFieldManager.TomatoTask>();
+        currentTaskIndex = 0;
+        currentTask = null;
+    }
+
+    /// <summary>
+    /// Orchestrator llama esto cuando ya terminó el patólogo
+    /// y quiere que los NurseBots empiecen su misión.
+    /// </summary>
+    public void StartMission()
+    {
+        if (missionStarted) return;
+
+        missionStarted = true;
+        state = NurseState.GoingToDS_Initial;
+        SetAnimationState(1);
+        TryGoToDSInitial();
+    }
+
+    // ----------------- Movimiento entre tiles -----------------
+
+    private void MoveAlongPath()
+    {
+        if (currentPath == null || currentPath.Count == 0)
+            return;
+
+        if (forceReplan && currentPath.Count > 0)
+        {
+            Vector2Int finalTarget = currentPath[currentPath.Count - 1];
+            currentPath = grid.FindPath(CurrentGridPos, finalTarget, this);
+            currentPathIndex = 0;
+            forceReplan = false;
+        }
+
+        if (currentPathIndex >= currentPath.Count)
+        {
+            currentPath.Clear();
+            currentPathIndex = 0;
+            OnArrivedToTile();
+            return;
+        }
+
+        Vector2Int next = currentPath[currentPathIndex];
+
+        bool canMove = botManager.TryMoveWithPriority(this, CurrentGridPos, next);
+        if (!canMove) return;
+
+        worldFrom = grid.GridToWorld(CurrentGridPos);
+        CurrentGridPos = next;
+        worldTo = grid.GridToWorld(CurrentGridPos);
+
+        // Giro hacia la dirección del movimiento
+        Vector3 dir = worldTo - worldFrom;
+        if (dir.sqrMagnitude > 0.01f)
+        {
+            dir.y = 0;
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            transform.rotation = targetRot;
+        }
+
+        worldFrom.y = fixedY;
+        worldTo.y = fixedY;
+
+        stepProgress = 0f;
+        currentPathIndex++;
+
+        SetAnimationState(1);
+    }
+
+    private void FixY()
+    {
+        var p = transform.position;
+        p.y = fixedY;
+        transform.position = p;
+    }
+
+    private void SetTarget(Vector2Int target)
+    {
+        if (target == CurrentGridPos)
+        {
+            currentPath.Clear();
+            currentPathIndex = 0;
+            OnArrivedToTile();
+            return;
+        }
+
+        currentPath = grid.FindPath(CurrentGridPos, target, this);
+        currentPathIndex = 0;
+
+        if (currentPath == null || currentPath.Count == 0)
+        {
+            Debug.LogWarning($"{name}: no hay camino a {target}. Me quedo en estado {state}.");
+            return;
+        }
+    }
+
+    // ----------------- Lógica de estados -----------------
+
+    private void OnArrivedToTile()
+    {
+        switch (state)
+        {
+            case NurseState.GoingToDS_Initial:
+                if (CurrentGridPos == dsGridPos)
+                    StartCoroutine(WaitAtDSInitial());
+                break;
+
+            case NurseState.GoingToPlant:
+                StartCoroutine(SampleAtPlant());
+                break;
+
+            case NurseState.GoingToENF:
+                if (CurrentGridPos == enfGridPos)
+                    StartCoroutine(WaitAtENF());
+                break;
+
+            case NurseState.GoingToDS_Final:
+                if (CurrentGridPos == dsGridPos)
+                    StartCoroutine(WaitAtDSFinal());
+                break;
+
+            case NurseState.ReturningHome:
+                state = NurseState.Idle;
+                SetAnimationState(0);
+                MissionComplete = true;
+                Debug.Log($"[Nurse] {name} completó su misión y regresó a home.");
+                break;
+        }
+    }
+
+    // --- FASE 1: IR / HACER FILA EN DS INICIAL ---
+
+    private void TryGoToDSInitial()
+    {
+        if (botManager.TryClaimDocking(this))
+        {
+            botManager.ReleaseDockingQueueSlot(this);
+            state = NurseState.GoingToDS_Initial;
+            SetTarget(dsGridPos);
+            return;
+        }
+
+        if (botManager.TryGetDockingQueueSlot(this, out var queuePos))
+        {
+            if (CurrentGridPos != queuePos)
+            {
+                SetTarget(queuePos);
+            }
+        }
+
+        if (state == NurseState.GoingToDS_Initial)
+            state = NurseState.WaitingAtDS_Initial;
+    }
+
+    private IEnumerator WaitAtDSInitial()
+    {
+        busy = true;
+        state = NurseState.WaitingAtDS_Initial;
+        SetAnimationState(0);
+
+        // Briefing con el patólogo
+        yield return new WaitForSeconds(1.0f);
+
+        busy = false;
+        botManager.ReleaseDocking(this);
+
+        // Empieza la fase de muestreo
+        GoToNextTask();
+    }
+
+    // --- FASE 2: PROCESAR PLANTAS SOSPECHOSAS ---
+
+    private void GoToNextTask()
+    {
+        if (assignedTasks == null || assignedTasks.Count == 0)
+        {
+            // No hay tareas -> vamos directo a DS final
+            state = NurseState.GoingToDS_Final;
+            TryGoToDSFinal();
+            return;
+        }
+
+        if (currentTaskIndex >= assignedTasks.Count)
+        {
+            // Ya no hay más tareas -> DS final
+            state = NurseState.GoingToDS_Final;
+            TryGoToDSFinal();
+            return;
+        }
+
+        currentTask = assignedTasks[currentTaskIndex];
+
+        // Ir al standPos de la planta sospechosa
+        state = NurseState.GoingToPlant;
+        SetTarget(currentTask.standPos);
+        SetAnimationState(1);
+    }
+
+    private IEnumerator SampleAtPlant()
+    {
+        if (currentTask == null)
+        {
+            GoToNextTask();
+            yield break;
+        }
+
+        busy = true;
+        state = NurseState.SamplingAtPlant;
+        SetAnimationState(0);
+
+        // Tiempo de "tomar muestra"
+        yield return new WaitForSeconds(sampleTime);
+
+        // Consumir 1 tomate como muestra (visual + verdad médica)
+        bool sampleWasSick = TomatoFieldManager.Instance.ConsumeTomato(currentTask);
+
+        Debug.Log(
+            $"[Nurse] {name} tomó muestra de planta en {currentTask.plantPos}. " +
+            $"appearsSuspicious={currentTask.appearsSuspicious}, " +
+            $"isTrulySick={currentTask.isTrulySick}, " +
+            $"sampleWasSick={sampleWasSick}."
+        );
+
+        busy = false;
+
+        // Llevar la muestra a ENFPos para análisis
+        state = NurseState.GoingToENF;
+        SetTarget(enfGridPos);
+        SetAnimationState(1);
+    }
+
+    private IEnumerator WaitAtENF()
+    {
+        busy = true;
+        state = NurseState.WaitingAtENF;
+        SetAnimationState(0);
+
+        // Tiempo de análisis en laboratorio
+        yield return new WaitForSeconds(analysisTime);
+
+        // Reporte de resultado (usamos la verdad de la planta)
+        if (currentTask != null)
+        {
+            Debug.Log(
+                $"[Nurse] {name} analizó muestra de planta en {currentTask.plantPos}. " +
+                $"RESULTADO REAL: {(currentTask.isTrulySick ? "ENFERMA" : "SANA")}."
+            );
+        }
+
+        busy = false;
+
+        // Siguiente planta
+        currentTaskIndex++;
+        GoToNextTask();
+    }
+
+    // --- FASE 3: DS FINAL Y REGRESO A CASA ---
+
+    private void TryGoToDSFinal()
+    {
+        if (botManager.TryClaimDocking(this))
+        {
+            botManager.ReleaseDockingQueueSlot(this);
+            state = NurseState.GoingToDS_Final;
+            SetTarget(dsGridPos);
+            return;
+        }
+
+        if (botManager.TryGetDockingQueueSlot(this, out var queuePos))
+        {
+            if (CurrentGridPos != queuePos)
+            {
+                SetTarget(queuePos);
+            }
+        }
+
+        if (state == NurseState.GoingToDS_Final)
+            state = NurseState.WaitingAtDS_Final;
+    }
+
+    private IEnumerator WaitAtDSFinal()
+    {
+        busy = true;
+        state = NurseState.WaitingAtDS_Final;
+        SetAnimationState(0);
+
+        // Reporte final al patólogo
+        yield return new WaitForSeconds(1.0f);
+
+        busy = false;
+        botManager.ReleaseDocking(this);
+
+        // Regresar a home
+        state = NurseState.ReturningHome;
+        SetTarget(homeGridPos);
+        SetAnimationState(1);
+    }
+
+    // ----------------- Animación -----------------
+
+    private void SetAnimationState(int stateValue)
+    {
+        if (animator == null) return;
+        animator.SetInteger("State", stateValue);
+    }
+}
