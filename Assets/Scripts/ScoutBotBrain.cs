@@ -20,9 +20,7 @@ public class ScoutBotBrain : BaseGridBot
     [Header("Stations")]
     public Transform dsTransform;    // punto DSPos (misma DS que usan los pickbots)
 
-    [Header("Home")]
-    [Tooltip("Punto al que regresará al final de la misión. Si se deja vacío, se usa la posición inicial.")]
-    public Transform homeTransform; // home explícito
+
 
     [Header("Movement / Visual")]
     public float stepsPerSecond = 2f;
@@ -110,10 +108,19 @@ public class ScoutBotBrain : BaseGridBot
         transform.position = grid.GridToWorld(CurrentGridPos);
         FixY();
 
+        // Get home tile from parent's PositionToHomeTile component
+        Transform homeTransform = GetHomeTileFromParent();
+        
         // Definimos home:
         if (homeTransform != null)
         {
             homeGridPos = grid.WorldToGrid(homeTransform.position);
+            
+            // Align bot's X and Z position to home tile
+            Vector3 alignedPosition = transform.position;
+            alignedPosition.x = homeTransform.position.x;
+            alignedPosition.z = homeTransform.position.z;
+            transform.position = alignedPosition;
         }
         else
         {
@@ -150,6 +157,34 @@ public class ScoutBotBrain : BaseGridBot
         SetAnimationState(1);
         TryGoToDSInitial();
     }
+
+    /// <summary>
+    /// Gets the home tile Transform from the parent's PositionToHomeTile component
+    /// </summary>
+    private Transform GetHomeTileFromParent()
+    {
+        if (transform.parent == null)
+        {
+            Debug.LogWarning($"{name}: No parent object found. Cannot inherit home tile.");
+            return null;
+        }
+
+        PositionToHomeTile positionScript = transform.parent.GetComponent<PositionToHomeTile>();
+        if (positionScript == null)
+        {
+            Debug.LogWarning($"{name}: Parent object does not have PositionToHomeTile component. Cannot inherit home tile.");
+            return null;
+        }
+
+        if (positionScript.homeTile == null)
+        {
+            Debug.LogWarning($"{name}: Parent's PositionToHomeTile.homeTile is not assigned!");
+            return null;
+        }
+
+        return positionScript.homeTile.transform;
+    }
+
 
     private void Update()
     {

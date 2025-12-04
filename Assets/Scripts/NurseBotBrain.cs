@@ -19,9 +19,7 @@ public class NurseBotBrain : BaseGridBot
     public Transform dsTransform;     // DSPos (misma docking que los demás)
     public Transform enfTransform;    // ENFPos (estación de enfermería / laboratorio)
 
-    [Header("Home")]
-    [Tooltip("Punto de 'home' al que el Nurse regresa al final. Si está vacío, usa su posición inicial.")]
-    public Transform homeTransform;
+
 
     [Header("Timings")]
     [Tooltip("Tiempo que tarda en tomar una muestra en la planta.")]
@@ -155,10 +153,19 @@ public class NurseBotBrain : BaseGridBot
         transform.position = grid.GridToWorld(CurrentGridPos);
         FixY();
 
+        // Get home tile from parent's PositionToHomeTile component
+        Transform homeTransform = GetHomeTileFromParent();
+        
         // Home: si hay homeTransform, usarlo; si no, usar posición inicial
         if (homeTransform != null)
         {
             homeGridPos = grid.WorldToGrid(homeTransform.position);
+            
+            // Align bot's X and Z position to home tile
+            Vector3 alignedPosition = transform.position;
+            alignedPosition.x = homeTransform.position.x;
+            alignedPosition.z = homeTransform.position.z;
+            transform.position = alignedPosition;
         }
         else
         {
@@ -206,6 +213,34 @@ public class NurseBotBrain : BaseGridBot
         state = NurseState.Idle;
         SetAnimationState(0);
     }
+
+    /// <summary>
+    /// Gets the home tile Transform from the parent's PositionToHomeTile component
+    /// </summary>
+    private Transform GetHomeTileFromParent()
+    {
+        if (transform.parent == null)
+        {
+            Debug.LogWarning($"{name}: No parent object found. Cannot inherit home tile.");
+            return null;
+        }
+
+        PositionToHomeTile positionScript = transform.parent.GetComponent<PositionToHomeTile>();
+        if (positionScript == null)
+        {
+            Debug.LogWarning($"{name}: Parent object does not have PositionToHomeTile component. Cannot inherit home tile.");
+            return null;
+        }
+
+        if (positionScript.homeTile == null)
+        {
+            Debug.LogWarning($"{name}: Parent's PositionToHomeTile.homeTile is not assigned!");
+            return null;
+        }
+
+        return positionScript.homeTile.transform;
+    }
+
 
     private void Update()
     {
