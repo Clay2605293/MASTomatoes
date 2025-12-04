@@ -88,23 +88,19 @@ public class CameraCycler : MonoBehaviour
         ActivateCameraAtIndex(currentIndex);
     }
 
-    // Activate only the camera at index (disable others), handle AudioListeners
     private void ActivateCameraAtIndex(int index)
     {
         Camera activeCam = cycleCameras[index];
 
-        // Disable all cameras (but don't destroy components)
         foreach (Camera c in cycleCameras)
         {
             if (c == null) continue;
             c.enabled = (c == activeCam);
 
-            // AudioListener: enable on active camera, disable on others
             AudioListener al = c.GetComponent<AudioListener>();
             if (al != null) al.enabled = (c == activeCam);
         }
 
-        // Also disable any extra AudioListeners elsewhere (rarely present)
         AudioListener[] allAL = FindObjectsOfType<AudioListener>();
         foreach (AudioListener al in allAL)
         {
@@ -112,11 +108,20 @@ public class CameraCycler : MonoBehaviour
             Camera parentCam = al.GetComponent<Camera>();
             if (parentCam == null || !cycleCameras.Contains(parentCam))
             {
-                // If it's not part of our cycle list, disable it to avoid multiple active listeners
                 al.enabled = false;
             }
         }
 
         Debug.Log($"[CameraCycler] Activated camera: {activeCam.name} (index {index})");
     }
+
+    public Camera GetActiveCamera()
+    {
+        if (cycleCameras.Count > 0 && currentIndex >= 0 && currentIndex < cycleCameras.Count)
+        {
+            return cycleCameras[currentIndex];
+        }
+        return mainCamera;
+}
+
 }
