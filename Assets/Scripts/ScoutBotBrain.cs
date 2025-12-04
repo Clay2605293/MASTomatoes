@@ -20,6 +20,10 @@ public class ScoutBotBrain : BaseGridBot
     [Header("Stations")]
     public Transform dsTransform;    // punto DSPos (misma DS que usan los pickbots)
 
+    [Header("Home")]
+    [Tooltip("Punto al que regresará al final de la misión. Si se deja vacío, se usa la posición inicial.")]
+    public Transform homeTransform; // *** NUEVO: home explícito
+
     [Header("Movement / Visual")]
     public float stepsPerSecond = 2f;
     public float fixedY = 1.71f;
@@ -101,7 +105,15 @@ public class ScoutBotBrain : BaseGridBot
         transform.position = grid.GridToWorld(CurrentGridPos);
         FixY();
 
-        homeGridPos = CurrentGridPos;
+        // *** Definimos home:
+        if (homeTransform != null)
+        {
+            homeGridPos = grid.WorldToGrid(homeTransform.position);
+        }
+        else
+        {
+            homeGridPos = CurrentGridPos; // si no hay homeTransform, usamos la posición inicial
+        }
 
         // Posición de la Docking Station (DSPos)
         if (dsTransform != null)
@@ -110,15 +122,14 @@ public class ScoutBotBrain : BaseGridBot
         }
         else
         {
-            Debug.LogWarning($"{name}: dsTransform no asignado, usando posición inicial como DS/home.");
-            dsGridPos = homeGridPos;
+            Debug.LogWarning($"{name}: dsTransform no asignado, usando posición inicial como DS.");
+            dsGridPos = CurrentGridPos;
         }
 
-        // Seguridad: si el home inicial no es caminable, usamos DS como home
+        // *** Ya no forzamos home = DS; solo avisamos si no es caminable
         if (!grid.IsWalkable(homeGridPos))
         {
-            Debug.LogWarning($"{name}: homeGridPos {homeGridPos} no es walkable. Usando DS como home.");
-            homeGridPos = dsGridPos;
+            Debug.LogWarning($"{name}: homeGridPos {homeGridPos} no es walkable. Revisa la posición de homeTransform o del bot.");
         }
 
         // Registrar en BotManager (para colisiones, prioridad, etc.)
@@ -257,8 +268,6 @@ public class ScoutBotBrain : BaseGridBot
             Debug.LogWarning($"{name}: no hay camino a {target}. Me quedo en estado {state}.");
             return;
         }
-
-        // Próximo frame se empezará a avanzar en MoveAlongPath
     }
 
     // ----------------- LÓGICA DE ESTADOS -----------------
@@ -283,12 +292,20 @@ public class ScoutBotBrain : BaseGridBot
                 break;
 
             case ScoutState.ReturningHome:
-                state = ScoutState.Idle;
-                SetAnimationState(0);
-                MissionComplete = true;   // 🔹 aquí avisamos que ya acabó
-                Debug.Log($"[Scout] {name} completó su misión y regresó a home.");
+                // *** Solo marcamos MissionComplete si realmente llegó a homeGridPos
+                if (CurrentGridPos == homeGridPos)
+                {
+                    state = ScoutState.Idle;
+                    SetAnimationState(0);
+                    MissionComplete = true;
+                    Debug.Log($"[Scout] {name} completó su misión y regresó a home {homeGridPos}.");
+                }
+                else
+                {
+                    Debug.LogWarning($"[Scout] {name} terminó path en {CurrentGridPos} pero home es {homeGridPos}. Reintentando ir a casa.");
+                    SetTarget(homeGridPos);
+                }
                 break;
-
         }
     }
 

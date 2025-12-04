@@ -19,6 +19,10 @@ public class NurseBotBrain : BaseGridBot
     public Transform dsTransform;     // DSPos (misma docking que los demás)
     public Transform enfTransform;    // ENFPos (estación de enfermería / laboratorio)
 
+    [Header("Home")]
+    [Tooltip("Punto de 'home' al que el Nurse regresa al final. Si está vacío, usa su posición inicial.")]
+    public Transform homeTransform;
+
     [Header("Timings")]
     [Tooltip("Tiempo que tarda en tomar una muestra en la planta.")]
     public float sampleTime = 0.5f;
@@ -151,7 +155,15 @@ public class NurseBotBrain : BaseGridBot
         transform.position = grid.GridToWorld(CurrentGridPos);
         FixY();
 
-        homeGridPos = CurrentGridPos;
+        // Home: si hay homeTransform, usarlo; si no, usar posición inicial
+        if (homeTransform != null)
+        {
+            homeGridPos = grid.WorldToGrid(homeTransform.position);
+        }
+        else
+        {
+            homeGridPos = CurrentGridPos;
+        }
 
         // Posición de la Docking Station (DSPos)
         if (dsTransform != null)
@@ -318,6 +330,7 @@ public class NurseBotBrain : BaseGridBot
 
     private void SetTarget(Vector2Int target)
     {
+        // Ya estoy en el tile destino
         if (target == CurrentGridPos)
         {
             currentPath.Clear();
@@ -331,7 +344,17 @@ public class NurseBotBrain : BaseGridBot
 
         if (currentPath == null || currentPath.Count == 0)
         {
-            Debug.LogWarning($"{name}: no hay camino a {target}. Me quedo en estado {state}.");
+            Debug.LogWarning($"{name}: no hay camino a {target}. Estado actual: {state}");
+
+            // Salvavidas: si estoy en ReturningHome y no hay camino, no me quedo colgado
+            if (state == NurseState.ReturningHome)
+            {
+                MissionComplete = true;
+                state = NurseState.Idle;
+                SetAnimationState(0);
+                Debug.LogWarning($"{name}: no pude llegar a home, marco MissionComplete igualmente.");
+            }
+
             return;
         }
     }
@@ -590,7 +613,7 @@ public class NurseBotBrain : BaseGridBot
         GoToNextTask();
     }
 
-    // --- FASE 3: DS FINAL Y REGRESO A CASA (igual que antes) ---
+    // --- FASE 3: DS FINAL Y REGRESO A CASA ---
 
     private void TryGoToDSFinal()
     {

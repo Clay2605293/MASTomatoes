@@ -32,6 +32,10 @@ public class BotController : BaseGridBot
     public Transform dockingStationTransform; // DS
     public Transform ecTransform;             // EC
 
+    [Header("Home")]
+    [Tooltip("Punto de 'home' al que el bot regresa al final. Si está vacío, usa su posición inicial.")]
+    public Transform homeTransform;
+
     [Header("Tomates")]
     public int capacity = 5;
     public float perTomatoPickupTime = 0.1f;
@@ -131,7 +135,15 @@ public class BotController : BaseGridBot
         pos.y = fixedYPosition;
         transform.position = pos;
 
-        homeGridPos = CurrentGridPos;
+        // Home: si hay homeTransform, usarlo; si no, usar posición inicial
+        if (homeTransform != null)
+        {
+            homeGridPos = grid.WorldToGrid(homeTransform.position);
+        }
+        else
+        {
+            homeGridPos = CurrentGridPos;
+        }
 
         worldFrom = transform.position;
         worldTo = transform.position;
@@ -400,9 +412,7 @@ public class BotController : BaseGridBot
             return;
         }
 
-        // -------- NUEVO: garantía de no dejar plantas a medias --------
-        // Si no hay pendientes, reconstruimos a partir de todas las assignedTasks
-        // buscando cualquier planta que todavía tenga tomates > 0.
+        // Garantía de no dejar plantas a medias:
         if (pendingTasks.Count == 0)
         {
             if (assignedTasks != null)
@@ -410,7 +420,7 @@ public class BotController : BaseGridBot
                 foreach (var t in assignedTasks)
                 {
                     if (t != null &&
-                        t.tomatoes > 0 &&                        // aún tiene tomates
+                        t.tomatoes > 0 &&
                         !pendingTasks.Contains(t) &&
                         !blockedTasks.Contains(t))
                     {
@@ -419,7 +429,6 @@ public class BotController : BaseGridBot
                 }
             }
         }
-        // ---------------------------------------------------------------
 
         // Si después de reconstruir sigue vacío, probamos con las bloqueadas
         if (pendingTasks.Count == 0)
@@ -472,8 +481,19 @@ public class BotController : BaseGridBot
 
         if (currentPath == null || currentPath.Count == 0)
         {
-            Debug.Log($"{name}: no se encontró camino hacia {targetGridPos}");
+            Debug.LogWarning($"{name}: no se encontró camino hacia {targetGridPos} (estado: {state})");
             hasGoal = false;
+
+            // Salvavidas: si no hay camino a home estando en ReturningHome,
+            // no dejamos colgado al orquestador.
+            if (state == BotState.ReturningHome)
+            {
+                state = BotState.IdleFinished;
+                MissionComplete = true;
+                SetAnimationState(0);
+                Debug.LogWarning($"{name}: no pude llegar a home, marco MissionComplete igualmente.");
+            }
+
             return false;
         }
 
