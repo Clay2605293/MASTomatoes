@@ -55525,8 +55525,20 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1732853012}
     - target: {fileID: 3695685062798474281, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.37
+      objectReference: {fileID: 0}
+    - target: {fileID: 3695685062798474281, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.37
+      objectReference: {fileID: 0}
+    - target: {fileID: 3695685062798474281, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.37
+      objectReference: {fileID: 0}
+    - target: {fileID: 3695685062798474281, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -2.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5813695221710889005, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
       propertyPath: m_Name
@@ -55538,7 +55550,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8380639752437020960, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -0.34
       objectReference: {fileID: 0}
     - target: {fileID: 8380639752437020960, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
       propertyPath: m_LocalPosition.z
@@ -77953,7 +77965,7 @@ MonoBehaviour:
   sickTomatoPrefab: {fileID: 6039818433915513305, guid: 1eba5f39de1afc14b85a2fa878c385d6, type: 3}
   suspiciousPlantProbability: 0.05
   trulySickGivenSuspiciousProbability: 0.8
-  sickMarkerPrefab: {fileID: 0}
+  sickMarkerPrefab: {fileID: 936683136}
   sickMarkerHeightOffset: 2
 --- !u!4 &850762154
 Transform:
@@ -85730,6 +85742,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 1867467376609631088, guid: f79e9fa616314904cbb82f9c3e3d47c2, type: 3}
   m_PrefabInstance: {fileID: 936130457}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &936683136 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5813695221710889005, guid: aa9f4c53c92e92e48a3756294029b697, type: 3}
+  m_PrefabInstance: {fileID: 603570520}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &936688669
 PrefabInstance:
