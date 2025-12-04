@@ -10,7 +10,7 @@ using UnityEngine;
 /// 3. Para cada tarea:
 ///    - Va a standPos de la planta.
 ///    - Toma muestra (ConsumeTomato).
-///    - Va a ENFPos y "analiza" (usa isTrulySick).
+///    - Va a ENFPos y analiza (usa isTrulySick), usando una cola física compartida.
 /// 4. Cuando termina todas, vuelve a DSPos, reporta y regresa a home.
 /// </summary>
 public class NurseBotBrain : BaseGridBot
@@ -82,6 +82,37 @@ public class NurseBotBrain : BaseGridBot
 
     private NurseState state = NurseState.Idle;
 
+    // ----------------- ENF: cola física propia (usa dockingQueueSlots) -----------------
+
+    private static NurseBotBrain enfOwner = null;
+    private static Queue<NurseBotBrain> enfQueueOrder = new Queue<NurseBotBrain>();
+    private static Dictionary<NurseBotBrain, int> enfQueueIndex = new Dictionary<NurseBotBrain, int>();
+    private static Vector2Int[] enfQueueGridPos;
+    private static bool enfQueueBuilt = false;
+
+    private void EnsureEnfQueueGridPos()
+    {
+        if (enfQueueBuilt) return;
+
+        var gridMgr = GridManager.Instance;
+        var manager = BotManager.Instance;
+
+        if (gridMgr == null || manager == null || manager.dockingQueueSlots == null || manager.dockingQueueSlots.Count == 0)
+        {
+            enfQueueGridPos = new Vector2Int[0];
+            enfQueueBuilt = true;
+            return;
+        }
+
+        enfQueueGridPos = new Vector2Int[manager.dockingQueueSlots.Count];
+        for (int i = 0; i < manager.dockingQueueSlots.Count; i++)
+        {
+            enfQueueGridPos[i] = gridMgr.WorldToGrid(manager.dockingQueueSlots[i].position);
+        }
+
+        enfQueueBuilt = true;
+    }
+
     // ----------------- BaseGridBot Required -----------------
 
     public override float RemainingCost
@@ -151,7 +182,7 @@ public class NurseBotBrain : BaseGridBot
             homeGridPos = dsGridPos;
         }
 
-        // Registrar en BotManager
+        // Registrar en BotManager para colisiones
         botManager.RegisterBot(this, CurrentGridPos);
 
         // Inicializar interpolación
@@ -159,7 +190,7 @@ public class NurseBotBrain : BaseGridBot
         worldTo = transform.position;
         stepProgress = 1f;
 
-        // Por ahora se queda en Idle hasta que el Orchestrator llame StartMission()
+        // Arranca en Idle hasta que el Orchestrator llame StartMission()
         state = NurseState.Idle;
         SetAnimationState(0);
     }
@@ -185,7 +216,7 @@ public class NurseBotBrain : BaseGridBot
         // 2) Si no estamos a medio paso, avanzar en el path (si hay)
         MoveAlongPath();
 
-        // 3) Estados que requieren reintentar reclamar DS
+        // 3) Estados que requieren reintentar reclamar DS o ENF
         switch (state)
         {
             case NurseState.WaitingAtDS_Initial:
@@ -194,6 +225,10 @@ public class NurseBotBrain : BaseGridBot
 
             case NurseState.WaitingAtDS_Final:
                 TryGoToDSFinal();
+                break;
+
+            case NurseState.WaitingAtENF:
+                TryGoToENF();
                 break;
         }
     }
@@ -335,7 +370,7 @@ public class NurseBotBrain : BaseGridBot
         }
     }
 
-    // --- FASE 1: IR / HACER FILA EN DS INICIAL ---
+    // --- FASE 1: IR / HACER FILA EN DS INICIAL (usa BotManager, igual que antes) ---
 
     private void TryGoToDSInitial()
     {
@@ -430,10 +465,98 @@ public class NurseBotBrain : BaseGridBot
 
         busy = false;
 
-        // Llevar la muestra a ENFPos para análisis
-        state = NurseState.GoingToENF;
-        SetTarget(enfGridPos);
-        SetAnimationState(1);
+        // Llevar la muestra a ENFPos para análisis (ahora con cola física)
+        TryGoToENF();
+    }
+
+    // --- FASE 2b: COLA FÍSICA EN ENFPos (usa dockingQueueSlots) ---
+
+    private void TryGoToENF()
+    {
+        EnsureEnfQueueGridPos();
+
+        // 1) Si ENF está libre o ya soy el dueño, intento ir directo
+        if (enfOwner == null || enfOwner == this)
+        {
+            // Si hay fila, solo el primero puede entrar
+            if (enfOwner == null && enfQueueOrder.Count > 0 && enfQueueOrder.Peek() != this)
+            {
+                // no soy el primero -> me quedo en la cola
+            }
+            else
+            {
+                // Reclamo ENF
+                enfOwner = this;
+
+                // Si estaba en la cola, salir de ella
+                if (enfQueueOrder.Count > 0 && enfQueueOrder.Peek() == this)
+                {
+                    enfQueueOrder.Dequeue();
+                }
+                enfQueueIndex.Remove(this);
+
+                // Ir directo a ENFPos
+                state = NurseState.GoingToENF;
+                SetTarget(enfGridPos);
+                SetAnimationState(1);
+                return;
+            }
+        }
+
+        // 2) ENF ocupado por otro -> obtener/usar slot de fila física
+        if (enfQueueGridPos == null || enfQueueGridPos.Length == 0)
+        {
+            // No hay slots definidos -> simplemente esperar donde esté
+            state = NurseState.WaitingAtENF;
+            return;
+        }
+
+        // Asignar slot si no tiene
+        if (!enfQueueIndex.TryGetValue(this, out int slotIndex))
+        {
+            // buscar primer slot libre
+            for (int i = 0; i < enfQueueGridPos.Length; i++)
+            {
+                bool used = false;
+                foreach (var kv in enfQueueIndex)
+                {
+                    if (kv.Value == i)
+                    {
+                        used = true;
+                        break;
+                    }
+                }
+
+                if (!used)
+                {
+                    enfQueueIndex[this] = i;
+                    enfQueueOrder.Enqueue(this);
+                    slotIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (enfQueueIndex.TryGetValue(this, out slotIndex))
+        {
+            Vector2Int slotPos = enfQueueGridPos[slotIndex];
+            if (CurrentGridPos != slotPos)
+            {
+                state = NurseState.WaitingAtENF;
+                SetTarget(slotPos);
+                SetAnimationState(1);
+            }
+            else
+            {
+                state = NurseState.WaitingAtENF;
+                SetAnimationState(0);
+            }
+        }
+        else
+        {
+            // No encontró slot libre, solo quedarse quieto
+            state = NurseState.WaitingAtENF;
+        }
     }
 
     private IEnumerator WaitAtENF()
@@ -456,12 +579,18 @@ public class NurseBotBrain : BaseGridBot
 
         busy = false;
 
+        // Liberar ENF para el siguiente de la cola
+        if (enfOwner == this)
+        {
+            enfOwner = null;
+        }
+
         // Siguiente planta
         currentTaskIndex++;
         GoToNextTask();
     }
 
-    // --- FASE 3: DS FINAL Y REGRESO A CASA ---
+    // --- FASE 3: DS FINAL Y REGRESO A CASA (igual que antes) ---
 
     private void TryGoToDSFinal()
     {

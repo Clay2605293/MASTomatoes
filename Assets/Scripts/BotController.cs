@@ -400,6 +400,28 @@ public class BotController : BaseGridBot
             return;
         }
 
+        // -------- NUEVO: garantía de no dejar plantas a medias --------
+        // Si no hay pendientes, reconstruimos a partir de todas las assignedTasks
+        // buscando cualquier planta que todavía tenga tomates > 0.
+        if (pendingTasks.Count == 0)
+        {
+            if (assignedTasks != null)
+            {
+                foreach (var t in assignedTasks)
+                {
+                    if (t != null &&
+                        t.tomatoes > 0 &&                        // aún tiene tomates
+                        !pendingTasks.Contains(t) &&
+                        !blockedTasks.Contains(t))
+                    {
+                        pendingTasks.Add(t);
+                    }
+                }
+            }
+        }
+        // ---------------------------------------------------------------
+
+        // Si después de reconstruir sigue vacío, probamos con las bloqueadas
         if (pendingTasks.Count == 0)
         {
             if (blockedTasks != null && blockedTasks.Count > 0)
@@ -409,13 +431,15 @@ public class BotController : BaseGridBot
             }
             else
             {
-                // no hay más plantas
+                // No hay más plantas que puedan cosecharse
                 if (carriedTomatoes > 0)
                 {
+                    // Llevar los últimos tomates a EC
                     TryGoToEC();
                 }
                 else
                 {
+                    // Nada que cosechar y mochila vacía -> ir a DS final
                     state = BotState.GoingToDS_Final;
                     TryGoToDocking();
                 }

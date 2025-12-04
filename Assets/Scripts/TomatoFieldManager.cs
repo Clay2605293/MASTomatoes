@@ -19,11 +19,15 @@ public class TomatoFieldManager : MonoBehaviour
         // Aquí vamos a guardar la "verdad" médica (si ese tomate viene de planta realmente enferma)
         public List<bool> diseasedTomatoes = new List<bool>();
 
-        // NUEVO: marca si la planta "parece sospechosa" al sistema de diagnóstico inicial
+        // Marca si la planta "parece sospechosa" al sistema de diagnóstico inicial
         public bool appearsSuspicious;
 
-        // NUEVO: marca si la planta está realmente enferma (ground truth)
+        // Marca si la planta está realmente enferma (ground truth)
         public bool isTrulySick;
+
+        // Marcador visual encima de la planta realmente enferma (flecha roja, etc.)
+        [HideInInspector]
+        public GameObject sickMarkerInstance;
     }
 
     [Header("Tareas de cosecha")]
@@ -39,8 +43,8 @@ public class TomatoFieldManager : MonoBehaviour
 
     [Header("Tomates enfermos (visual)")]
     [Range(0f, 1f)]
-    public float diseaseProbability = 0.20f; // ya no la usaremos como antes, pero la dejamos por si luego la necesitas
-    public GameObject sickTomatoPrefab;      // prefab para tomates "marcados" (verde/bandera)
+    public float diseaseProbability = 0.20f; // ya no la usamos como antes, pero la dejamos por si luego la necesitas
+    public GameObject sickTomatoPrefab;      // prefab para tomates "marcados" (p. ej. verdes)
 
     [Header("Probabilidades de sospecha / enfermedad real")]
     [Tooltip("Probabilidad de que una planta PAREZCA sospechosa (5% = 0.05)")]
@@ -50,6 +54,13 @@ public class TomatoFieldManager : MonoBehaviour
     [Tooltip("Dentro de las sospechosas, probabilidad de que sí estén realmente enfermas (80% = 0.8)")]
     [Range(0f, 1f)]
     public float trulySickGivenSuspiciousProbability = 0.8f;
+
+    [Header("Marcadores de plantas realmente enfermas")]
+    [Tooltip("Prefab de la flecha roja (o icono) para plantas realmente enfermas.")]
+    public GameObject sickMarkerPrefab;
+
+    [Tooltip("Altura a la que se coloca el marcador sobre la planta.")]
+    public float sickMarkerHeightOffset = 2.0f;
 
     private void Awake()
     {
@@ -133,17 +144,20 @@ public class TomatoFieldManager : MonoBehaviour
                 plantPos = plantPos.Value,
                 tomatoes = Random.Range(1, 6),
                 tomatoVisuals = new List<GameObject>(),
-                diseasedTomatoes = new List<bool>()
+                diseasedTomatoes = new List<bool>(),
+                appearsSuspicious = false,
+                isTrulySick = false,
+                sickMarkerInstance = null
             };
 
-            // NUEVO: determinar sospecha y enfermedad real a nivel planta
+            // Determinar sospecha y enfermedad real a nivel planta
             float suspicionRoll = Random.value;
             if (suspicionRoll < suspiciousPlantProbability)
             {
                 task.appearsSuspicious = true;
                 suspiciousCount++;
 
-                // Dentro de las sospechosas, 80% realmente enfermas (por defecto)
+                // Dentro de las sospechosas, probabilidad de estar realmente enfermas
                 float truthRoll = Random.value;
                 task.isTrulySick = truthRoll < trulySickGivenSuspiciousProbability;
                 if (task.isTrulySick) trulySickCount++;
@@ -174,6 +188,9 @@ public class TomatoFieldManager : MonoBehaviour
             return;
         }
 
+        if (grid == null)
+            grid = GridManager.Instance;
+
         // Posición base en mundo de la planta
         Vector3 basePos = grid.GridToWorld(task.plantPos);
 
@@ -185,10 +202,9 @@ public class TomatoFieldManager : MonoBehaviour
             bool isMedicallySick = task.isTrulySick;
 
             // APARIENCIA VISUAL:
-            //   - Si la planta aparece sospechosa, queremos usar la "bandera verde" (sickTomatoPrefab)
+            //   - Si la planta aparece sospechosa, usamos el prefab alternativo (sickTomatoPrefab)
             //     para que destaque en el invernadero.
-            //   - Esto es independiente de si realmente está enferma o no (falsos positivos incluidos).
-            bool useGreenPrefab = task.appearsSuspicious;
+            bool useSuspiciousPrefab = task.appearsSuspicious;
 
             // Guardamos la verdad médica en la lista paralela
             task.diseasedTomatoes.Add(isMedicallySick);
@@ -200,10 +216,10 @@ public class TomatoFieldManager : MonoBehaviour
 
             Vector3 spawnPos = basePos + new Vector3(offsetX, offsetY, offsetZ);
 
-            // Seleccionar prefab según apariencia (sospechosa -> verde)
+            // Seleccionar prefab según apariencia (sospechosa -> prefab alterno)
             GameObject prefabToUse = tomatoPrefab;
 
-            if (useGreenPrefab && sickTomatoPrefab != null)
+            if (useSuspiciousPrefab && sickTomatoPrefab != null)
             {
                 prefabToUse = sickTomatoPrefab;
             }
@@ -247,5 +263,61 @@ public class TomatoFieldManager : MonoBehaviour
         }
 
         return wasSick;
+    }
+
+    /// <summary>
+    /// Instancia una flecha roja (o el prefab que asignes) sobre cada planta realmente enferma.
+    /// Pensado para ser llamado por el Orchestrator al terminar el diagnóstico.
+    /// </summary>
+    public void ShowTrulySickMarkers(IEnumerable<TomatoTask> sickTasks)
+    {
+        if (sickMarkerPrefab == null)
+        {
+            Debug.LogWarning("[TomatoFieldManager] sickMarkerPrefab no asignado. No se pueden mostrar marcadores de plantas enfermas.");
+            return;
+        }
+
+        if (grid == null)
+            grid = GridManager.Instance;
+
+        if (grid == null)
+        {
+            Debug.LogWarning("[TomatoFieldManager] No hay GridManager. No se pueden posicionar marcadores.");
+            return;
+        }
+
+        foreach (var task in sickTasks)
+        {
+            if (task == null) continue;
+
+            // Si ya tiene marcador, no duplicamos
+            if (task.sickMarkerInstance != null) continue;
+
+            Vector3 basePos = grid.GridToWorld(task.plantPos);
+            basePos += Vector3.up * sickMarkerHeightOffset;
+
+            GameObject marker = Instantiate(sickMarkerPrefab, basePos, Quaternion.identity, this.transform);
+            task.sickMarkerInstance = marker;
+        }
+
+        Debug.Log("[TomatoFieldManager] Marcadores de plantas realmente enfermas activados.");
+    }
+
+    /// <summary>
+    /// Elimina todos los marcadores rojos de plantas enfermas.
+    /// Útil si reinicias el escenario.
+    /// </summary>
+    public void ClearTrulySickMarkers()
+    {
+        if (allTasks == null) return;
+
+        foreach (var task in allTasks)
+        {
+            if (task != null && task.sickMarkerInstance != null)
+            {
+                Destroy(task.sickMarkerInstance);
+                task.sickMarkerInstance = null;
+            }
+        }
     }
 }
