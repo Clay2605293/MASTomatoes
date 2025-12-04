@@ -22,7 +22,7 @@ public class ScoutBotBrain : BaseGridBot
 
     [Header("Home")]
     [Tooltip("Punto al que regresará al final de la misión. Si se deja vacío, se usa la posición inicial.")]
-    public Transform homeTransform; // *** NUEVO: home explícito
+    public Transform homeTransform; // home explícito
 
     [Header("Movement / Visual")]
     public float stepsPerSecond = 2f;
@@ -41,8 +41,13 @@ public class ScoutBotBrain : BaseGridBot
     private Vector2Int homeGridPos;
 
     // Ruta de inspección (tiles frente a plantas)
+    // routeTiles = lista original (solo referencia/debug)
+    // pendingTiles = tiles que aún faltan por visitar (para el greedy)
     private List<Vector2Int> routeTiles = new();
-    private int routeIndex = 0;
+    private List<Vector2Int> pendingTiles = new();
+
+    // Flag para saber si ya se asignó una ruta (para distinguir “no me han dado ruta” de “terminé todos los tiles”)
+    private bool routeAssigned = false;
 
     // Path actual dentro del grid
     private List<Vector2Int> currentPath = new();
@@ -75,7 +80,7 @@ public class ScoutBotBrain : BaseGridBot
     {
         get
         {
-            int routeRemaining = routeTiles.Count - routeIndex;
+            int routeRemaining = (pendingTiles != null ? pendingTiles.Count : 0);
             int pathRemaining = currentPath.Count - currentPathIndex;
             return routeRemaining * 5 + pathRemaining;
         }
@@ -105,7 +110,7 @@ public class ScoutBotBrain : BaseGridBot
         transform.position = grid.GridToWorld(CurrentGridPos);
         FixY();
 
-        // *** Definimos home:
+        // Definimos home:
         if (homeTransform != null)
         {
             homeGridPos = grid.WorldToGrid(homeTransform.position);
@@ -126,7 +131,7 @@ public class ScoutBotBrain : BaseGridBot
             dsGridPos = CurrentGridPos;
         }
 
-        // *** Ya no forzamos home = DS; solo avisamos si no es caminable
+        // Solo avisamos si home no es caminable
         if (!grid.IsWalkable(homeGridPos))
         {
             Debug.LogWarning($"{name}: homeGridPos {homeGridPos} no es walkable. Revisa la posición de homeTransform o del bot.");
@@ -185,7 +190,14 @@ public class ScoutBotBrain : BaseGridBot
     public void AssignRoute(List<Vector2Int> tiles)
     {
         routeTiles = tiles ?? new List<Vector2Int>();
-        routeIndex = 0;
+        pendingTiles = new List<Vector2Int>(routeTiles);
+        routeAssigned = true;
+
+        // Si ya está en modo de inspección y estaba esperando ruta, arranca
+        if (state == ScoutState.InspectingRoute && !busy && pendingTiles.Count > 0)
+        {
+            GoToNextInspectionTile();
+        }
     }
 
     // ----------------- MOVIMIENTO ENTRE TILES -----------------
@@ -292,7 +304,7 @@ public class ScoutBotBrain : BaseGridBot
                 break;
 
             case ScoutState.ReturningHome:
-                // *** Solo marcamos MissionComplete si realmente llegó a homeGridPos
+                // Solo marcamos MissionComplete si realmente llegó a homeGridPos
                 if (CurrentGridPos == homeGridPos)
                 {
                     state = ScoutState.Idle;
@@ -302,7 +314,9 @@ public class ScoutBotBrain : BaseGridBot
                 }
                 else
                 {
-                    Debug.LogWarning($"[Scout] {name} terminó path en {CurrentGridPos} pero home es {homeGridPos}. Reintentando ir a casa.");
+                    Debug.LogWarning(
+                        $"[Scout] {name} terminó path en {CurrentGridPos} pero home es {homeGridPos}. Reintentando ir a casa."
+                    );
                     SetTarget(homeGridPos);
                 }
                 break;
@@ -354,29 +368,54 @@ public class ScoutBotBrain : BaseGridBot
 
         // Empieza la fase de inspección
         state = ScoutState.InspectingRoute;
-        GoToNextInspectionTile();
+
+        // Si ya tenemos ruta asignada, arranca; si no, espera a que llegue
+        if (routeAssigned && pendingTiles != null && pendingTiles.Count > 0)
+        {
+            GoToNextInspectionTile();
+        }
+        else
+        {
+            StartCoroutine(WaitForRoute());
+        }
     }
 
     // --- FASE 2: INSPECCIÓN ---
 
-    private void GoToNextInspectionTile()
+    private Vector2Int PickClosestTile(List<Vector2Int> tiles, Vector2Int from)
     {
-        // Si no hay ruta todavía, esperamos a que el MissionController la asigne.
-        if (routeTiles == null || routeTiles.Count == 0)
+        Vector2Int best = from;
+        int bestDist = int.MaxValue;
+
+        for (int i = 0; i < tiles.Count; i++)
         {
-            StartCoroutine(WaitForRoute());
-            return;
+            Vector2Int t = tiles[i];
+            int d = Mathf.Abs(t.x - from.x) + Mathf.Abs(t.y - from.y); // distancia Manhattan
+
+            if (d < bestDist)
+            {
+                bestDist = d;
+                best = t;
+            }
         }
 
-        // Si ya no hay más tiles en la ruta, vamos a DS final
-        if (routeIndex >= routeTiles.Count)
+        return best;
+    }
+
+    private void GoToNextInspectionTile()
+    {
+        // Si no hay tiles pendientes, ya terminamos el recorrido -> ir a DS final
+        if (pendingTiles == null || pendingTiles.Count == 0)
         {
             state = ScoutState.GoingToDS_Final;
             TryGoToDSFinal();
             return;
         }
 
-        Vector2Int nextTile = routeTiles[routeIndex];
+        // Elegir el tile más cercano desde la posición actual
+        Vector2Int nextTile = PickClosestTile(pendingTiles, CurrentGridPos);
+        pendingTiles.Remove(nextTile);
+
         SetTarget(nextTile);
         SetAnimationState(1);
     }
@@ -386,13 +425,14 @@ public class ScoutBotBrain : BaseGridBot
         busy = true;
         SetAnimationState(0);
 
-        // Esperamos hasta que haya una ruta asignada
-        while (routeTiles == null || routeTiles.Count == 0)
+        // Esperamos hasta que el MissionController asigne la ruta
+        while (!routeAssigned || pendingTiles == null || pendingTiles.Count == 0)
         {
             yield return null;
         }
 
         busy = false;
+        // Ya tenemos ruta → ir al primer tile
         GoToNextInspectionTile();
     }
 
@@ -408,9 +448,9 @@ public class ScoutBotBrain : BaseGridBot
 
         busy = false;
 
-        // Aquí luego generaremos Observaciones ligadas a routeTiles[routeIndex]
+        // Aquí luego generaremos Observaciones ligadas a la celda actual (CurrentGridPos)
 
-        routeIndex++;
+        // Al terminar esta inspección, ir al siguiente tile pendiente (el más cercano)
         GoToNextInspectionTile();
     }
 
