@@ -1,3 +1,5 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="UnityChan.Common.csproj" />
+  <Project Path="UnityChan.Editor.csproj" />
 </Solution>

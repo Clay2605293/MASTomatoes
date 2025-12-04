@@ -1475,6 +1475,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: tripwire_turret
       objectReference: {fileID: 0}
+    - target: {fileID: 1006552374490496431, guid: 3e05698241732974db51ed0b948714b8, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: fc7001deca53c26438a0c2476301e0aa, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -181112,6 +181116,63 @@ MonoBehaviour:
   walkable: 0
   isHarvestSpot: 0
   hasPlant: 1
+--- !u!1001 &1870813415
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1599656106033141761, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_Name
+      value: ScoutBotPrefab
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -18.913578
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.36
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -8.772885
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 0f86eef1f30aab240b6e1ea22c30da9a, type: 3}
 --- !u!1001 &1870889265
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -185862,6 +185923,63 @@ MonoBehaviour:
   walkable: 0
   isHarvestSpot: 0
   hasPlant: 1
+--- !u!1001 &1916235039
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1599656106033141761, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_Name
+      value: EnfermeroBotPrefab
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -17.847319
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.452
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -8.408302
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2541816659273442090, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 3dfa4ba44dd6d534db4ddd3cb053f45f, type: 3}
 --- !u!1001 &1916503525
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -210120,3 +210238,5 @@ SceneRoots:
   - {fileID: 919720081}
   - {fileID: 1453599413}
   - {fileID: 2092213482}
+  - {fileID: 1916235039}
+  - {fileID: 1870813415}
