@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6512805882249992940}
   - component: {fileID: 2271032395986621319}
   - component: {fileID: 5698488227811817837}
-  - component: {fileID: 3491442387077672191}
+  - component: {fileID: 4085601634390106717}
   m_Layer: 0
   m_Name: ScoutBotPrefab
   m_TagString: Untagged
@@ -115,7 +115,7 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.23
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3491442387077672191
+--- !u!114 &4085601634390106717
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -124,20 +124,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 1599656106033141761}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f422be1652269f64eb4311815594102b, type: 3}
+  m_Script: {fileID: 11500000, guid: e8d380a9776324cba90d2e80f23fca60, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ScoutBotCore
-  estado: 0
-  scoutId: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScoutBotBrain
+  photoTime: 0.5
+  unloadTime: 2
+  dsTransform: {fileID: 0}
   stepsPerSecond: 2
-  captureTime: 2
-  baseWaitTime: 2
-  fixedYPosition: 1.71
-  useDebugMission: 0
-  debugSegmentTargets: []
-  autoGenerateSegments: 1
-  dockingStationTransform: {fileID: 0}
-  waitForDistributor: 0
+  fixedY: 0.5
 --- !u!1 &4688110092110485810
 GameObject:
   m_ObjectHideFlags: 0

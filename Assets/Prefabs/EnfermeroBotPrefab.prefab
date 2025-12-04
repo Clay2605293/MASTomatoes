@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 6512805882249992940}
   - component: {fileID: 2271032395986621319}
   - component: {fileID: 5698488227811817837}
+  - component: {fileID: 7226586383651088680}
   m_Layer: 0
   m_Name: EnfermeroBotPrefab
   m_TagString: Untagged
@@ -114,6 +115,24 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.23
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7226586383651088680
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1599656106033141761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88f94b12f4a7c4e2f988375c9fb48685, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NurseBotBrain
+  dsTransform: {fileID: 0}
+  enfTransform: {fileID: 0}
+  sampleTime: 0.5
+  analysisTime: 1
+  stepsPerSecond: 2
+  fixedY: 1.71
 --- !u!1 &4688110092110485810
 GameObject:
   m_ObjectHideFlags: 0
