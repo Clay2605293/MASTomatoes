@@ -31,7 +31,6 @@ public class BotController : BaseGridBot
     [Header("Stations")]
     public Transform dockingStationTransform; // DS
     public Transform ecTransform;             // EC
-
     [Header("Tomates")]
     public int capacity = 5;
     public float perTomatoPickupTime = 0.1f;
@@ -299,12 +298,12 @@ public class BotController : BaseGridBot
             transform.rotation = targetRotation;
         }
 
+        // Fix Y position
         worldFrom.y = fixedYPosition;
         worldTo.y = fixedYPosition;
+
         stepProgress = 0f;
         currentPathIndex++;
-
-        SetAnimationState(1);
     }
 
     private void OnArrivedToDestination()
@@ -316,53 +315,48 @@ public class BotController : BaseGridBot
         switch (state)
         {
             case BotState.GoingToDS_Initial:
-                if (CurrentGridPos == dsGridPos)
-                    StartCoroutine(WaitAtDockThenStartHarvest());
+                StartCoroutine(WaitAtDockThenStartHarvest());
                 break;
 
             case BotState.GoingToDS_Final:
-                if (CurrentGridPos == dsGridPos)
-                    StartCoroutine(WaitAtDockThenGoHome());
+                StartCoroutine(WaitAtDockThenGoHome());
+                break;
+
+            case BotState.ReturningHome:
+                state = BotState.IdleFinished;
+                MissionComplete = true;
+                SetAnimationState(0);
+                break;
+
+            case BotState.GoingToEC:
+                StartCoroutine(UnloadTomatoes());
                 break;
 
             case BotState.Harvesting:
                 if (currentTask != null &&
-                    CurrentGridPos == currentTask.standPos &&
-                    !isBusy &&
-                    carriedTomatoes < capacity)
+                    CurrentGridPos == currentTask.standPos)
                 {
                     StartCoroutine(HarvestTomatoesAtCurrentTask());
                 }
-                break;
-
-            case BotState.GoingToEC:
-                if (CurrentGridPos == ecGridPos)
-                    StartCoroutine(UnloadTomatoes());
-                break;
-
-            case BotState.ReturningHome:
-                if (CurrentGridPos == homeGridPos)
-                {
-                    state = BotState.IdleFinished;
-                    SetAnimationState(0);
-                    MissionComplete = true;
-                    Debug.Log($"{name}: Llegó a home y finalizó misión.");
-                }
                 else
                 {
-                    Debug.LogWarning($"{name}: Camino a home acabó en {CurrentGridPos}, pero home es {homeGridPos}.");
-                    SetTargetInternal(homeGridPos);
+                    TryNextTask();
                 }
                 break;
         }
     }
 
+    // ---------------- ESTACIONES: DS / EC ----------------
+
     private void TryGoToDocking()
     {
+        // 1) Intentar ser el dueño de DS
         if (botManager.TryClaimDocking(this))
         {
+            // Si estábamos en un slot de cola, lo liberamos
             botManager.ReleaseDockingQueueSlot(this);
 
+            // Ir directamente al tile de DS
             if (state == BotState.WaitingAtDS_Initial)
                 state = BotState.GoingToDS_Initial;
             else if (state == BotState.WaitingAtDS_Final)
@@ -372,6 +366,7 @@ public class BotController : BaseGridBot
             return;
         }
 
+        // 2) No hay turno todavía -> intentar obtener un slot de cola físico
         if (botManager.TryGetDockingQueueSlot(this, out var queuePos))
         {
             if (CurrentGridPos != queuePos)
@@ -380,6 +375,7 @@ public class BotController : BaseGridBot
             }
         }
 
+        // 3) Estado pasa a "esperando en DS"
         if (state == BotState.GoingToDS_Initial)
             state = BotState.WaitingAtDS_Initial;
         else if (state == BotState.GoingToDS_Final)
@@ -388,112 +384,44 @@ public class BotController : BaseGridBot
 
     private void TryGoToEC()
     {
-        if (carriedTomatoes <= 0 && state != BotState.Unloading)
-        {
-            state = BotState.Harvesting;
-            TryNextTask();
-            return;
-        }
-
+        // 1) Intentar ser dueño de EC
         if (botManager.TryClaimEC(this))
         {
+            botManager.ReleaseECQueueSlot(this);
+
             state = BotState.GoingToEC;
             SetTargetInternal(ecGridPos);
             return;
         }
 
+        // 2) No hay turno -> pedir un slot de cola cerca de EC
+        if (botManager.TryGetECQueueSlot(this, out var queuePos))
+        {
+            if (CurrentGridPos != queuePos)
+            {
+                SetTargetInternal(queuePos);
+            }
+        }
+
+        // 3) Marcamos que estamos esperando en EC
         state = BotState.WaitingForEC;
     }
 
-    private void TryNextTask()
-    {
-        if ((pendingTasks == null || pendingTasks.Count == 0) &&
-            (blockedTasks == null || blockedTasks.Count == 0))
-        {
-            if (carriedTomatoes > 0)
-            {
-                TryGoToEC();
-            }
-            else
-            {
-                state = BotState.GoingToDS_Final;
-                TryGoToDocking();
-            }
-            return;
-        }
+    // ---------------- TAREAS: SELECCIÓN Y RUTAS ----------------
 
-        if (pendingTasks != null && pendingTasks.Count > 0)
-        {
-            var closest = PickClosestTask(pendingTasks, CurrentGridPos);
-            if (closest == null)
-            {
-                MovePendingToBlocked();
-            }
-            else
-            {
-                pendingTasks.Remove(closest);
-                currentTask = closest;
-
-                if (carriedTomatoes >= capacity)
-                {
-                    pendingTasks.Add(closest);
-                    TryGoToEC();
-                    return;
-                }
-
-                SetTargetInternal(closest.standPos);
-                return;
-            }
-        }
-
-        if (blockedTasks != null && blockedTasks.Count > 0)
-        {
-            var oldest = blockedTasks[0];
-            blockedTasks.RemoveAt(0);
-            currentTask = oldest;
-
-            if (carriedTomatoes >= capacity)
-            {
-                blockedTasks.Add(oldest);
-                TryGoToEC();
-                return;
-            }
-
-            SetTargetInternal(oldest.standPos);
-            return;
-        }
-    }
-
-    private void MovePendingToBlocked()
-    {
-        if (pendingTasks == null || pendingTasks.Count == 0)
-            return;
-
-        if (blockedTasks == null)
-            blockedTasks = new List<TomatoFieldManager.TomatoTask>();
-
-        blockedTasks.AddRange(pendingTasks);
-        pendingTasks.Clear();
-    }
-
-    private TomatoFieldManager.TomatoTask PickClosestTask(List<TomatoFieldManager.TomatoTask> tasks, Vector2Int fromPos)
+    private TomatoFieldManager.TomatoTask PickClosestTask(
+        List<TomatoFieldManager.TomatoTask> list,
+        Vector2Int from)
     {
         TomatoFieldManager.TomatoTask best = null;
         int bestDist = int.MaxValue;
 
-        for (int i = 0; i < tasks.Count; i++)
+        foreach (var t in list)
         {
-            var t = tasks[i];
-            var sp = t.standPos;
-
-            var pathToTask = grid.FindPath(fromPos, sp, this);
-            if (pathToTask == null || pathToTask.Count == 0)
-                continue;
-
-            int dist = pathToTask.Count;
-            if (dist < bestDist)
+            int d = Mathf.Abs(t.standPos.x - from.x) + Mathf.Abs(t.standPos.y - from.y);
+            if (d < bestDist)
             {
-                bestDist = dist;
+                bestDist = d;
                 best = t;
             }
         }
@@ -501,14 +429,81 @@ public class BotController : BaseGridBot
         return best;
     }
 
-    private bool SetTargetInternal(Vector2Int targetGridPos)
+    private void TryNextTask()
     {
-        if (targetGridPos == CurrentGridPos)
+        if (state != BotState.Harvesting)
+            return;
+
+        currentTask = null;
+
+        if (pendingTasks == null)
         {
-            OnArrivedToDestination();
-            return false;
+            currentPath.Clear();
+            hasGoal = false;
+            return;
         }
 
+        // Garantía de no dejar plantas a medias:
+        if (pendingTasks.Count == 0)
+        {
+            if (assignedTasks != null)
+            {
+                foreach (var t in assignedTasks)
+                {
+                    if (t != null &&
+                        t.tomatoes > 0 &&
+                        !pendingTasks.Contains(t) &&
+                        !blockedTasks.Contains(t))
+                    {
+                        pendingTasks.Add(t);
+                    }
+                }
+            }
+        }
+
+        // Si después de reconstruir sigue vacío, probamos con las bloqueadas
+        if (pendingTasks.Count == 0)
+        {
+            if (blockedTasks != null && blockedTasks.Count > 0)
+            {
+                pendingTasks.AddRange(blockedTasks);
+                blockedTasks.Clear();
+            }
+            else
+            {
+                // No hay más plantas que puedan cosecharse
+                if (carriedTomatoes > 0)
+                {
+                    // Llevar los últimos tomates a EC
+                    TryGoToEC();
+                }
+                else
+                {
+                    // Nada que cosechar y mochila vacía -> ir a DS final
+                    state = BotState.GoingToDS_Final;
+                    TryGoToDocking();
+                }
+                return;
+            }
+        }
+
+        currentTask = PickClosestTask(pendingTasks, CurrentGridPos);
+        pendingTasks.Remove(currentTask);
+
+        Vector2Int targetGridPos = currentTask.standPos;
+
+        bool ok = SetTargetInternal(targetGridPos);
+
+        if (!ok)
+        {
+            blockedTasks.Add(currentTask);
+            currentTask = null;
+            TryNextTask();
+        }
+    }
+
+    private bool SetTargetInternal(Vector2Int targetGridPos)
+    {
         currentGoal = targetGridPos;
         hasGoal = true;
 

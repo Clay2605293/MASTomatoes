@@ -16473,6 +16473,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 657595441}
     - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
+      propertyPath: fixedYPosition
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: dockingStationTransform
       value: 
       objectReference: {fileID: 151744915}
@@ -16490,7 +16494,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.540237
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalRotation.w
@@ -120039,6 +120043,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 657595441}
     - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
+      propertyPath: fixedYPosition
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: dockingStationTransform
       value: 
       objectReference: {fileID: 151744915}
@@ -120056,7 +120064,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.409748
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalRotation.w
@@ -138282,7 +138290,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: f33aa72dcbc759b4cbc86f8b69282cb3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.57319
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: f33aa72dcbc759b4cbc86f8b69282cb3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -158345,6 +158353,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 657595441}
     - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
+      propertyPath: fixedYPosition
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: dockingStationTransform
       value: 
       objectReference: {fileID: 151744915}
@@ -158362,7 +158374,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.4
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalRotation.w
@@ -162864,6 +162876,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 657595441}
     - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
+      propertyPath: fixedYPosition
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: dockingStationTransform
       value: 
       objectReference: {fileID: 151744915}
@@ -162881,7 +162897,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.40556
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalRotation.w
@@ -189983,7 +189999,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: f33aa72dcbc759b4cbc86f8b69282cb3, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.530083
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: f33aa72dcbc759b4cbc86f8b69282cb3, type: 3}
       propertyPath: m_LocalRotation.w
@@ -206685,6 +206701,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 657595441}
     - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
+      propertyPath: fixedYPosition
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 515873923466184984, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: dockingStationTransform
       value: 
       objectReference: {fileID: 151744915}
@@ -206702,7 +206722,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -53.41662
+      value: -53.463737
       objectReference: {fileID: 0}
     - target: {fileID: 2541816659273442090, guid: 6946f49ad28b37c4e9d32c18289676f6, type: 3}
       propertyPath: m_LocalRotation.w
